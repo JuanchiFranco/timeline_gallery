@@ -8,9 +8,9 @@ de recuerdos (año → mes → día → momento).
 servidores, ni analytics. La galería del dispositivo es la fuente de verdad;
 la app solo guarda un índice de metadatos.
 
-> Estado: **Fase 5 (Timeline)** — permiso de galería, sincronización
-> completa/incremental hacia el índice local y línea de tiempo agrupada por
-> año → mes → día → momento con miniaturas. El calendario llega en la Fase 6.
+> Estado: **Fase 7 (Visor)** — permiso de galería, sincronización hacia el
+> índice local, línea de tiempo, calendario con detalle por día y visor de
+> fotos (con zoom) y videos. Siguen las fases de tests, performance y release.
 > El diseño completo está en el documento *Arquitectura: Galería como
 > Timeline de Recuerdos*.
 
@@ -106,7 +106,7 @@ Decisiones técnicas: [`docs/decisions.md`](docs/decisions.md).
 | 2 | Foundation |
 | 3 | Permisos + lectura de galería (`photo_manager`) |
 | 4 | Sincronización incremental |
-| 5 | Timeline y agrupación por momentos (esta) |
+| 5 | Timeline y agrupación por momentos |
 | 6 | Calendario |
-| 7 | Visor de fotos y videos |
+| 7 | Visor de fotos y videos (esta) |
 | 8–10 | Tests, performance, release |

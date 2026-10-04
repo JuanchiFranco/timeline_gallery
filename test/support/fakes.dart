@@ -6,6 +6,7 @@ import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dar
 import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/device_gallery_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/gallery_permission_service.dart';
+import 'package:galeria_eventos/features/gallery/domain/repositories/media_file_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/media_index_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/thumbnail_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/services/gallery_sync_service.dart';
@@ -158,6 +159,19 @@ class FakeMediaIndexRepository implements MediaIndexRepository {
 /// Miniaturas que nunca están disponibles: la UI muestra su placeholder.
 class FakeThumbnailRepository implements ThumbnailRepository {
   @override
-  Future<Uint8List?> load(String platformAssetId, {required int size}) async =>
-      null;
+  Future<Uint8List?> load(
+    String platformAssetId, {
+    required int size,
+    bool preserveAspect = false,
+  }) async => null;
+}
+
+/// Resuelve todos los assets a la misma ruta (o a ninguna si [path] es `null`).
+class FakeMediaFileRepository implements MediaFileRepository {
+  FakeMediaFileRepository([this.path = '/fake/video.mp4']);
+
+  final String? path;
+
+  @override
+  Future<String?> localPath(String platformAssetId) async => path;
 }

@@ -136,3 +136,66 @@ como "+N". Ver todo el momento es responsabilidad del visor (Fase 7).
 
 **D26. Fechas en español sin `intl`** (`EsDateFormat`), porque la app solo está
 en español por ahora. Si se agrega otro idioma, migrar a `intl`.
+
+## Fase 6
+
+**D27. El calendario reutiliza `monthDaysProvider`.** Cada página del mes lee
+los mismos días ya agrupados que el timeline y deriva de ahí la portada y el
+conteo de cada día (`summarizeDays`). No hay una consulta nueva ni lógica de
+agrupación duplicada; abrir un mes cuesta lo mismo en las dos pestañas.
+
+**D28. Un `PageView` con todos los meses entre el más antiguo y el más
+reciente con recuerdos**, sin huecos (`calendarMonths`), para que las flechas
+nunca salten un mes. Los meses vacíos del medio se muestran con la grilla sin
+portadas. Al llegar meses antiguos durante una sincronización, los índices se
+corren: la página recuerda el `MonthKey` visible y vuelve a él.
+
+**D29. Semana desde el lunes** (convención del idioma de la app). La grilla
+rellena con huecos para tener siempre semanas completas.
+
+**D30. El día es una ruta hija de Calendario** (`/calendar/day/2026-09-23`),
+con el parámetro validado (`2026-02-31` es inválido; `DateTime` lo desbordaría
+al 3 de marzo). Muestra todos los momentos con slivers perezosos y sin el tope
+de 8 miniaturas del timeline. Una fecha inválida muestra un aviso en vez de
+fallar.
+
+**D31. Tocar una miniatura todavía no hace nada**; el visor llega en la Fase 7.
+
+## Fase 7
+
+**D32. `video_player` para la reproducción** (agregado en esta fase, como
+fijó D11). En los tests se sustituye la plataforma con un
+`VideoPlayerPlatform` en memoria (`video_player_platform_interface` como
+dependencia de desarrollo), sin decodificar nada.
+
+**D33. El visor navega entre los assets de un día**, no entre una lista pasada
+por parámetro. La ruta es `/viewer/<día>/<id>` (`2026-09-23` o `sin-fecha`):
+se puede abrir con un enlace directo, sobrevive a un reinicio de la ruta y el
+orden coincide con el del timeline. Los ids van codificados porque los
+`localIdentifier` de iOS contienen `/`. Es una ruta de primer nivel, fuera del
+shell, para ocupar toda la pantalla.
+
+**D34. Las fotos se muestran como vista previa de hasta 2048 px**, no como el
+original. El original puede pesar decenas de MB y no siempre lo decodifica
+Flutter (HEIC en Android); la vista previa la genera la plataforma en un
+formato seguro y conserva la proporción (`preserveAspect`). Si hace falta
+máxima calidad con zoom profundo, es una mejora futura.
+
+**D35. Zoom con `InteractiveViewer`** (pellizco y doble toque). Mientras hay
+zoom el `PageView` deja de deslizar, para que arrastrar mueva la imagen y no
+cambie de asset.
+
+**D36. El video muestra un póster y solo crea el reproductor al tocar
+reproducir.** Pasar por varios videos seguidos no abre varios decodificadores.
+La página libera el controlador al salir de ella. Se descubrió que
+`VideoPlayerController.dispose()` no termina nunca si la creación falló (espera
+un completer que nunca se completa), por eso la limpieza tras un error no se
+espera.
+
+**D37. Si el asset abierto ya no existe** (se borró mientras tanto) se abre el
+primero del día; y si cambia la lista durante una sincronización, la página
+sigue en el asset que se estaba viendo (mismo criterio que el calendario).
+
+Pendiente para fases siguientes: marcar favoritos desde el visor, compartir y
+borrar (el borrado del dispositivo es una acción destructiva que requiere su
+propio diseño y confirmación).

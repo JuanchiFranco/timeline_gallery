@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:galeria_eventos/core/formatting/duration_format.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
 import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_providers.dart';
 import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_image.dart';
@@ -11,17 +12,25 @@ const _thumbnailSize = 300;
 /// Celda cuadrada con la miniatura de un asset. Si es video muestra la
 /// duración; si [overflow] > 0 se atenúa y muestra "+N".
 class ThumbnailTile extends ConsumerWidget {
-  const ThumbnailTile({required this.asset, this.overflow = 0, super.key});
+  const ThumbnailTile({
+    required this.asset,
+    this.overflow = 0,
+    this.onTap,
+    super.key,
+  });
 
   final MediaAsset asset;
   final int overflow;
+
+  /// Qué hacer al tocar la miniatura (por ejemplo, abrir el visor).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final repository = ref.watch(thumbnailRepositoryProvider);
 
-    return ClipRRect(
+    final tile = ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Stack(
         fit: StackFit.expand,
@@ -49,7 +58,7 @@ class ThumbnailTile extends ConsumerWidget {
               bottom: 4,
               child: _Badge(
                 icon: Icons.play_arrow_rounded,
-                label: _formatDuration(asset.duration),
+                label: formatDuration(asset.duration),
               ),
             ),
           if (overflow > 0)
@@ -67,6 +76,14 @@ class ThumbnailTile extends ConsumerWidget {
             ),
         ],
       ),
+    );
+
+    if (onTap == null) return tile;
+    return Semantics(
+      button: true,
+      label: asset.isVideo ? 'Abrir video' : 'Abrir foto',
+      excludeSemantics: true,
+      child: GestureDetector(onTap: onTap, child: tile),
     );
   }
 }
@@ -100,15 +117,4 @@ class _Badge extends StatelessWidget {
       ),
     );
   }
-}
-
-/// "0:12", "1:05", "1:02:03". Vacío si no se conoce la duración.
-String _formatDuration(Duration? duration) {
-  if (duration == null) return '';
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-  return hours > 0
-      ? '$hours:${minutes.toString().padLeft(2, '0')}:$seconds'
-      : '$minutes:$seconds';
 }

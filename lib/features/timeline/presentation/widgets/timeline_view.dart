@@ -5,12 +5,7 @@ import 'package:galeria_eventos/core/formatting/es_date_format.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/timeline/domain/timeline.dart';
 import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
-import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_tile.dart';
-
-/// Máximo de miniaturas por momento (2 filas de 4). El resto se resume como
-/// "+N" en la última celda; verlas todas es trabajo del visor (Fase 7).
-const _maxTilesPerMoment = 8;
-const _columns = 4;
+import 'package:galeria_eventos/features/timeline/presentation/widgets/moment_block.dart';
 
 /// Línea de tiempo: año → mes → día → momento. Los meses se construyen de
 /// forma perezosa y cada uno consulta solo su rango al índice.
@@ -138,70 +133,9 @@ class _DaySection extends StatelessWidget {
             ),
           ),
           for (final moment in day.moments)
-            _MomentBlock(moment: moment, showTime: date != null),
+            MomentBlock(moment: moment, showTime: date != null),
         ],
       ),
     );
   }
-}
-
-class _MomentBlock extends StatelessWidget {
-  const _MomentBlock({required this.moment, required this.showTime});
-
-  final TimelineMoment moment;
-  final bool showTime;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final shown = moment.assets.take(_maxTilesPerMoment).toList();
-    final hidden = moment.count - shown.length;
-    final photos = moment.assets.where((a) => !a.isVideo).length;
-    final videos = moment.count - photos;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(
-              [
-                if (showTime) EsDateFormat.timeRange(moment.start, moment.end),
-                _summary(photos, videos),
-              ].join(' · '),
-              style: theme.textTheme.labelMedium,
-            ),
-          ),
-          GridView.count(
-            crossAxisCount: _columns,
-            mainAxisSpacing: 4,
-            crossAxisSpacing: 4,
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              for (var i = 0; i < shown.length; i++)
-                ThumbnailTile(
-                  key: ValueKey(shown[i].platformAssetId),
-                  asset: shown[i],
-                  overflow: hidden > 0 && i == shown.length - 1
-                      ? hidden + 1
-                      : 0,
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _summary(int photos, int videos) {
-  final parts = [
-    if (photos > 0) photos == 1 ? '1 foto' : '$photos fotos',
-    if (videos > 0) videos == 1 ? '1 video' : '$videos videos',
-  ];
-  return parts.join(', ');
 }

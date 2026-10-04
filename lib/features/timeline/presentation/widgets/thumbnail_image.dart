@@ -13,11 +13,15 @@ class ThumbnailImage extends ImageProvider<ThumbnailImage> {
     required this.repository,
     required this.assetId,
     required this.size,
+    this.preserveAspect = false,
   });
 
   final ThumbnailRepository repository;
   final String assetId;
   final int size;
+
+  /// Conserva la proporción del original (visor) en vez de recortar a cuadrado.
+  final bool preserveAspect;
 
   @override
   Future<ThumbnailImage> obtainKey(ImageConfiguration configuration) =>
@@ -32,7 +36,11 @@ class ThumbnailImage extends ImageProvider<ThumbnailImage> {
   }
 
   Future<ImageInfo> _load(ImageDecoderCallback decode) async {
-    final bytes = await repository.load(assetId, size: size);
+    final bytes = await repository.load(
+      assetId,
+      size: size,
+      preserveAspect: preserveAspect,
+    );
     if (bytes == null) {
       throw StateError('thumbnail unavailable');
     }
@@ -44,8 +52,11 @@ class ThumbnailImage extends ImageProvider<ThumbnailImage> {
 
   @override
   bool operator ==(Object other) =>
-      other is ThumbnailImage && assetId == other.assetId && size == other.size;
+      other is ThumbnailImage &&
+      assetId == other.assetId &&
+      size == other.size &&
+      preserveAspect == other.preserveAspect;
 
   @override
-  int get hashCode => Object.hash(assetId, size);
+  int get hashCode => Object.hash(assetId, size, preserveAspect);
 }
