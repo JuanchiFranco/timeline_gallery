@@ -1,60 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:galeria_eventos/app/app.dart';
 import 'package:galeria_eventos/app/theme/app_theme.dart';
 import 'package:galeria_eventos/core/error/app_failure.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/gallery_permission.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
-import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_providers.dart';
-import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
 import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_tile.dart';
 
 import '../support/fakes.dart';
 import '../support/fixtures.dart';
-
-/// [count] assets el 23 de septiembre de 2026 (hora local), uno cada 5 minutos
-/// desde las 08:00, así que forman un solo momento.
-List<MediaAsset> _september(int count) => [
-  for (var i = 0; i < count; i++)
-    buildAsset(
-      'p$i',
-      captureDate: DateTime(2026, 9, 23, 8, i * 5).toUtc(),
-      type: i == 0 ? MediaType.video : MediaType.image,
-    ),
-];
-
-Stream<List<MonthBucket>> _septemberBuckets(int count) =>
-    Stream.value([MonthBucket(const MonthKey(2026, 9), count)]);
-
-Widget _app({
-  required Stream<List<MonthBucket>> months,
-  List<MediaAsset> assets = const [],
-  FakeGalleryPermissionService? permissions,
-  FakeGallerySyncService? sync,
-}) {
-  return ProviderScope(
-    // Sin reintentos automáticos: los tests de error deben ser deterministas.
-    retry: (retryCount, error) => null,
-    overrides: [
-      monthBucketsProvider.overrideWith((ref) => months),
-      mediaIndexRepositoryProvider.overrideWithValue(
-        FakeMediaIndexRepository(assets),
-      ),
-      thumbnailRepositoryProvider.overrideWithValue(FakeThumbnailRepository()),
-      galleryPermissionServiceProvider.overrideWithValue(
-        permissions ?? FakeGalleryPermissionService(GalleryPermission.granted),
-      ),
-      gallerySyncServiceProvider.overrideWithValue(
-        sync ?? FakeGallerySyncService(),
-      ),
-    ],
-    child: const GaleriaApp(),
-  );
-}
+import '../support/test_app.dart';
 
 void main() {
   group('Permiso de galería', () {
@@ -66,7 +23,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _app(months: Stream.value(const []), permissions: permissions),
+        testApp(months: Stream.value(const []), permissions: permissions),
       );
       await tester.pumpAndSettle();
 
@@ -89,7 +46,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _app(months: Stream.value(const []), permissions: permissions),
+        testApp(months: Stream.value(const []), permissions: permissions),
       );
       await tester.pumpAndSettle();
 
@@ -105,7 +62,7 @@ void main() {
 
     testWidgets('restringido solo informa, sin acciones', (tester) async {
       await tester.pumpWidget(
-        _app(
+        testApp(
           months: Stream.value(const []),
           permissions: FakeGalleryPermissionService(
             GalleryPermission.restricted,
@@ -126,9 +83,9 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _app(
-          months: _septemberBuckets(3),
-          assets: _september(3),
+        testApp(
+          months: septemberBuckets(3),
+          assets: september(3),
           permissions: permissions,
         ),
       );
@@ -147,7 +104,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        _app(months: _septemberBuckets(3), assets: _september(3)),
+        testApp(months: septemberBuckets(3), assets: september(3)),
       );
       await tester.pumpAndSettle();
 
@@ -159,7 +116,9 @@ void main() {
     testWidgets('al tener permiso sincroniza una vez', (tester) async {
       final sync = FakeGallerySyncService();
 
-      await tester.pumpWidget(_app(months: Stream.value(const []), sync: sync));
+      await tester.pumpWidget(
+        testApp(months: Stream.value(const []), sync: sync),
+      );
       await tester.pumpAndSettle();
 
       expect(sync.syncCalls, 1);
@@ -172,7 +131,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _app(
+        testApp(
           months: Stream.value(const []),
           permissions: permissions,
           sync: sync,
@@ -192,7 +151,9 @@ void main() {
     ) async {
       final sync = FakeGallerySyncService(error: const SyncFailure('boom'));
 
-      await tester.pumpWidget(_app(months: Stream.value(const []), sync: sync));
+      await tester.pumpWidget(
+        testApp(months: Stream.value(const []), sync: sync),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text(const SyncFailure('x').userMessage), findsOneWidget);
@@ -209,7 +170,7 @@ void main() {
 
   group('Timeline (estados base)', () {
     testWidgets('sin recuerdos muestra el estado vacío', (tester) async {
-      await tester.pumpWidget(_app(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp(months: Stream.value(const [])));
       await tester.pumpAndSettle();
 
       expect(find.text('Aún no hay recuerdos para mostrar'), findsOneWidget);
@@ -221,7 +182,7 @@ void main() {
       final controller = StreamController<List<MonthBucket>>();
       addTearDown(controller.close);
 
-      await tester.pumpWidget(_app(months: controller.stream));
+      await tester.pumpWidget(testApp(months: controller.stream));
       await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -233,7 +194,7 @@ void main() {
       const failure = StorageFailure('boom');
 
       await tester.pumpWidget(
-        _app(months: Stream<List<MonthBucket>>.error(failure)),
+        testApp(months: Stream<List<MonthBucket>>.error(failure)),
       );
       await tester.pumpAndSettle();
 
@@ -247,7 +208,7 @@ void main() {
   group('Timeline (contenido)', () {
     testWidgets('muestra año, mes, día y momento', (tester) async {
       await tester.pumpWidget(
-        _app(months: _septemberBuckets(3), assets: _september(3)),
+        testApp(months: septemberBuckets(3), assets: september(3)),
       );
       await tester.pumpAndSettle();
 
@@ -261,7 +222,7 @@ void main() {
 
     testWidgets('un momento grande resume el resto como +N', (tester) async {
       await tester.pumpWidget(
-        _app(months: _septemberBuckets(10), assets: _september(10)),
+        testApp(months: septemberBuckets(10), assets: september(10)),
       );
       await tester.pumpAndSettle();
 
@@ -278,13 +239,13 @@ void main() {
       addTearDown(tester.view.reset);
 
       final assets = [
-        ..._september(1),
+        ...september(1),
         buildAsset('oct', captureDate: DateTime(2026, 10, 2, 9).toUtc()),
         buildAsset('dic', captureDate: DateTime(2025, 12, 5, 9).toUtc()),
       ];
 
       await tester.pumpWidget(
-        _app(
+        testApp(
           months: Stream.value(const [
             MonthBucket(MonthKey(2026, 10), 1),
             MonthBucket(MonthKey(2026, 9), 1),
@@ -305,7 +266,7 @@ void main() {
 
     testWidgets('los assets sin fecha van bajo "Sin fecha"', (tester) async {
       await tester.pumpWidget(
-        _app(
+        testApp(
           months: Stream.value(const [MonthBucket(MonthKey.undated(), 1)]),
           assets: [
             buildAsset(
@@ -329,7 +290,7 @@ void main() {
     testWidgets('la barra inferior cambia entre las tres secciones', (
       tester,
     ) async {
-      await tester.pumpWidget(_app(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp(months: Stream.value(const [])));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Calendario'));

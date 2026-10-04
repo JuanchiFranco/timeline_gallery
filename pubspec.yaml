@@ -27,10 +27,16 @@ dependencies:
   # acceso limitado). Ver docs/decisions.md, D12.
   photo_manager: ^3.12.0
 
+  # Reproducción de videos en el visor. Ver docs/decisions.md, D32.
+  video_player: ^2.14.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+  # Para simular la plataforma de video en los tests del visor.
+  video_player_platform_interface: ^6.9.0
 
   # Generador de código de drift.
   build_runner: ^2.15.1
