@@ -1,0 +1,37 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    - '**/*.g.dart'
+    - build/**
+    - android/**
+    - ios/**
+
+linter:
+  rules:
+    # Imports consistentes y ordenados.
+    - always_use_package_imports
+    - directives_ordering
+
+    # Los errores nunca se tragan en silencio: `catch (_) {}` está prohibido
+    # y todo `catch` debe declarar qué captura (`on Object catch`).
+    - avoid_catches_without_on_clauses
+    - only_throw_errors
+
+    # Futures y recursos.
+    - unawaited_futures
+    - cancel_subscriptions
+    - close_sinks
+
+    # Estilo.
+    - avoid_dynamic_calls
+    - avoid_print
+    - prefer_final_locals
+    - prefer_final_in_for_each
+    - prefer_single_quotes
+    - sort_child_properties_last
+    - unnecessary_await_in_return

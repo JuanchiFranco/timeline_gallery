@@ -1,0 +1,40 @@
+name: galeria_eventos
+description: >-
+  Tu vida organizada como una línea de tiempo. Convierte la galería del
+  dispositivo en un calendario visual de recuerdos, 100% local.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  # drift 2.35 exige Dart >= 3.10; ver docs/decisions.md.
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Estado + inyección de dependencias (providers escritos a mano, sin codegen).
+  flutter_riverpod: ^3.4.3
+
+  # Navegación declarativa (paquete oficial del equipo de Flutter).
+  go_router: ^18.0.2
+
+  # Índice local de la galería (SQLite con queries reactivas).
+  drift: ^2.35.1
+  drift_flutter: ^0.3.1
+
+  # Lectura de la galería del dispositivo y estado del permiso (incluye
+  # acceso limitado). Ver docs/decisions.md, D12.
+  photo_manager: ^3.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Generador de código de drift.
+  build_runner: ^2.15.1
+  drift_dev: ^2.35.1
+
+flutter:
+  uses-material-design: true
