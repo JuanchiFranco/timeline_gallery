@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debe coincidir con `appName` en lib/core/config/app_info.dart. -->
+    <string name="app_name">Galería de eventos</string>
+</resources>

@@ -45,6 +45,7 @@ final gallerySyncServiceProvider = Provider<GallerySyncService>(
     index: ref.watch(mediaIndexRepositoryProvider),
     state: ref.watch(syncStateStoreProvider),
     logger: ref.watch(appLoggerProvider),
+    pageSize: ref.watch(appConfigProvider).syncBatchSize,
   ),
 );
 

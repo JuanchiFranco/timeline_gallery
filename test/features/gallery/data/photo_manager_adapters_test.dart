@@ -175,6 +175,22 @@ void main() {
       expect(args['size'], 50);
     });
 
+    test(
+      'no lee la ubicación de las fotos, aunque la plataforma la entregue',
+      () async {
+        channel.handlers['getAssetPathList'] = (_) =>
+            PhotoManagerChannel.pathList();
+        channel.handlers['getAssetListPaged'] = (_) => {
+          'data': [PhotoManagerChannel.asset('a1', lat: -34.6, lng: -58.4)],
+        };
+
+        final asset = (await repository.readPage(page: 0, pageSize: 10)).single;
+
+        expect(asset.latitude, isNull);
+        expect(asset.longitude, isNull);
+      },
+    );
+
     test('pide el orden más reciente primero', () async {
       channel.handlers['getAssetPathList'] = (_) =>
           PhotoManagerChannel.pathList();

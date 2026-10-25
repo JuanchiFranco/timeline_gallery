@@ -7,7 +7,9 @@ import 'package:galeria_eventos/features/gallery/domain/entities/gallery_permiss
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/media_index_repository.dart';
 import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_providers.dart';
+import 'package:galeria_eventos/features/settings/presentation/providers/settings_providers.dart';
 import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import 'fakes.dart';
 import 'fixtures.dart';
@@ -33,6 +35,8 @@ Widget testApp({
   FakeGallerySyncService? sync,
   FakeMediaFileRepository? mediaFiles,
   MediaIndexRepository? index,
+  FakeSyncStateStore? syncState,
+  PackageInfo? packageInfo,
   List<Override> overrides = const [],
 }) {
   return ProviderScope(
@@ -53,6 +57,19 @@ Widget testApp({
       ),
       gallerySyncServiceProvider.overrideWithValue(
         sync ?? FakeGallerySyncService(),
+      ),
+      syncStateStoreProvider.overrideWithValue(
+        syncState ?? FakeSyncStateStore(),
+      ),
+      packageInfoProvider.overrideWith(
+        (ref) =>
+            packageInfo ??
+            PackageInfo(
+              appName: 'galeria_eventos',
+              packageName: 'test.galeria_eventos',
+              version: '1.0.0',
+              buildNumber: '1',
+            ),
       ),
       ...overrides,
     ],

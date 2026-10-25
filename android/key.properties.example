@@ -1,0 +1,12 @@
+# Copia este archivo como android/key.properties y rellénalo.
+# android/key.properties NO se versiona (está en .gitignore): nunca lo subas ni
+# lo pegues en un chat o un issue. Ver docs/release.md, sección "Firma".
+
+storePassword=la-contraseña-del-keystore
+keyPassword=la-contraseña-de-la-clave
+keyAlias=upload
+
+# Ruta al .jks, absoluta o relativa a la carpeta android/. Guárdalo FUERA del
+# repositorio y haz una copia de seguridad: si lo pierdes, no podrás publicar
+# actualizaciones con la misma firma.
+storeFile=C:/Users/tu-usuario/claves/upload-keystore.jks

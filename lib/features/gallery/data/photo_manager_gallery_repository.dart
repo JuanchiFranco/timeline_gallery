@@ -72,8 +72,9 @@ class PhotoManagerGalleryRepository implements DeviceGalleryRepository {
       height: entity.height,
       orientation: entity.orientation,
       durationSeconds: entity.duration,
-      latitude: entity.latitude,
-      longitude: entity.longitude,
+      // La ubicación no se lee: ninguna función la usa y en iOS el permiso de
+      // la biblioteca la entrega junto con cada foto. Lo que no se necesita no
+      // se guarda (ver docs/decisions.md, D14 y D55).
       mimeType: entity.mimeType,
     );
   }

@@ -8,6 +8,7 @@ import 'package:galeria_eventos/features/gallery/domain/repositories/device_gall
 import 'package:galeria_eventos/features/gallery/domain/repositories/gallery_permission_service.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/media_file_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/media_index_repository.dart';
+import 'package:galeria_eventos/features/gallery/domain/repositories/sync_state_store.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/thumbnail_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/services/gallery_sync_service.dart';
 
@@ -101,6 +102,9 @@ class FakeGallerySyncService implements GallerySyncService {
 
   int syncCalls = 0;
 
+  /// Cuántas de esas llamadas pidieron un re-escaneo completo.
+  int forceFullCalls = 0;
+
   /// Si se define, se ejecuta dentro de `sync` (para emitir progreso y
   /// quedarse esperando a que el test lo libere).
   Future<void> Function(SyncProgressCallback? onProgress)? script;
@@ -111,6 +115,7 @@ class FakeGallerySyncService implements GallerySyncService {
     SyncProgressCallback? onProgress,
   }) async {
     syncCalls++;
+    if (forceFull) forceFullCalls++;
     await script?.call(onProgress);
     final failure = error;
     if (failure != null) throw failure;
@@ -219,4 +224,19 @@ class FakeMediaFileRepository implements MediaFileRepository {
 
   @override
   Future<String?> localPath(String platformAssetId) async => path;
+}
+
+/// Estado de sincronización en memoria.
+class FakeSyncStateStore implements SyncStateStore {
+  final Map<SyncStateKey, String> values = {};
+
+  @override
+  Future<String?> read(SyncStateKey key) async => values[key];
+
+  @override
+  Future<void> write(SyncStateKey key, String value) async =>
+      values[key] = value;
+
+  @override
+  Future<void> clear() async => values.clear();
 }

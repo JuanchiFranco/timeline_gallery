@@ -354,3 +354,66 @@ cambio de no cargar el índice entero; ocurre una vez por semana.
 * **Medir en un teléfono real.** Todo lo anterior es relativo; el criterio de
   éxito de esta fase se confirma con el perfil de rendimiento de Flutter
   (DevTools) en dispositivo con la galería real.
+
+## Fase 10
+
+Preparación del release. La guía completa y las listas de comprobación están en
+[`release.md`](release.md); aquí quedan las decisiones.
+
+**D54. `package_info_plus` para mostrar la versión en Ajustes.** Es la única
+forma de leer en ejecución la versión que Flutter inyecta en cada plataforma
+(`--build-name` / `--build-number`); evita mantener un número duplicado en el
+código que se desincronice del de `pubspec.yaml`. En los tests se sustituye con
+`packageInfoProvider`.
+
+**D55. La ubicación de las fotos no se lee.** Ninguna función la usa. En Android
+ya no se pedía `ACCESS_MEDIA_LOCATION` (D14), pero en iOS el permiso de la
+biblioteca entrega la ubicación junto con cada foto y se habría copiado al
+índice. Lo que no se necesita no se guarda: el adaptador no la lee, y la
+política de privacidad puede afirmarlo sin matices. Las columnas
+`latitude`/`longitude` siguen en el esquema (quitarlas exigiría una migración)
+pero siempre quedan vacías.
+
+**D56. Firma de Android por `key.properties` con dos modos.** Con el archivo, el
+release se firma con tu clave. Sin él, `assembleRelease` cae a la clave de debug
+(para probar `flutter run --release` y para la integración continua), y
+`bundleRelease` **se niega a construirse**: un `.aab` firmado con debug no se
+puede subir a Play y es mejor enterarse al construirlo que al subirlo. La guarda
+mira la tarea exacta `bundleRelease` (AGP tiene tareas internas como
+`bundleReleaseResources` que también corren en un `assembleRelease`).
+
+**D57. R8 y recorte de recursos activados en release, `allowBackup=false`.**
+R8 reduce el tamaño pero es la causa más común de fallos que solo existen en
+release; por eso `release.md` exige probar la build firmada en un dispositivo
+real. Sin copia de seguridad en la nube: lo único que guarda la app es un índice
+regenerable, y la app promete que nada sale del dispositivo (un respaldo en
+Google Drive lo contradiría).
+
+**D58. Ajustes deja de ser un relleno.** Acceso a la galería (con la acción que
+corresponde a cada estado), estado de la sincronización con "Volver a escanear"
+(re-escaneo completo), qué guarda la app, versión y licencias de código abierto
+(las licencias de los paquetes exigen poder mostrarse). Reutiliza los mismos
+controladores que el resto de la app.
+
+**D59. El icono se generó con un script propio** (formas con distancias
+firmadas, sin dependencias) y `flutter_launcher_icons`. Es una **propuesta
+funcional**, no un diseño de marca: sustituir los PNG de `assets/icon/` y volver
+a generar basta para cambiarlo. Aviso: `flutter_launcher_icons` 0.14.x deja mal
+una opción de `project.pbxproj`; hay que revertir ese archivo tras ejecutarlo.
+
+**D60. Integración continua que verifica, no publica.** Formato, análisis, tests y
+un APK de release que además comprueba que el manifiesto **no** declara
+`INTERNET` (la promesa de privacidad convertida en una comprobación automática).
+Firmar y subir a las tiendas queda manual a propósito.
+
+**D61. Pendientes que solo puede resolver el dueño del proyecto:** correo de contacto y URL pública de la
+política de privacidad, cuenta de desarrollador y firma de iOS (requiere un Mac),
+capturas de la ficha, y la declaración de permisos de fotos y videos de Play
+Console. Todo está listado en `release.md`.
+
+**D62. Identificador de la app.** Android `com.novadigitalsolutions.timeline_gallery`
+(el decidido por el dueño). iOS `com.novadigitalsolutions.timelineGallery`:
+Apple rechaza los guiones bajos en los identificadores de paquete, así que el
+guion bajo se convierte en mayúscula inicial (misma regla que usa `flutter
+create`). El paquete de Dart (`galeria_eventos`) es interno, no se publica y se
+deja como está para no tocar los ~80 imports.

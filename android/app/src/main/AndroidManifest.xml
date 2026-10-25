@@ -4,8 +4,11 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
+    <!-- Sin copia de seguridad en la nube: lo único que guarda la app es un índice
+         regenerable de la galería, y la app promete que nada sale del dispositivo. -->
     <application
-        android:label="galeria_eventos"
+        android:label="@string/app_name"
+        android:allowBackup="false"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
