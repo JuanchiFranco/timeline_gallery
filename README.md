@@ -8,10 +8,10 @@ de recuerdos (año → mes → día → momento).
 servidores, ni analytics. La galería del dispositivo es la fuente de verdad;
 la app solo guarda un índice de metadatos.
 
-> Estado: **Fase 9 (Rendimiento)** — timeline perezoso por día, resumen único
-> por día para timeline y calendario, sincronización incremental en milisegundos
-> y cola de miniaturas. Ver los números en `docs/decisions.md` (Fase 9). Falta
-> el release.
+> Estado: **Fase 10 (Release)** — la app está funcionalmente completa y lista
+> para empaquetar: Ajustes, iconos, firma de Android, verificación de que no usa
+> Internet y guía de publicación. Lo que falta depende de decisiones y cuentas
+> tuyas (identificador, contacto, tiendas): ver [`docs/release.md`](docs/release.md).
 > El diseño completo está en el documento *Arquitectura: Galería como
 > Timeline de Recuerdos*.
 
@@ -105,7 +105,8 @@ Galería del dispositivo → Platform Adapter → Gallery Repository
   → Sync Service → Base de datos local → Dominio → Riverpod → UI
 ```
 
-Decisiones técnicas: [`docs/decisions.md`](docs/decisions.md).
+Decisiones técnicas: [`docs/decisions.md`](docs/decisions.md). Publicación:
+[`docs/release.md`](docs/release.md). Privacidad: [`docs/privacy-policy.md`](docs/privacy-policy.md).
 
 ## Roadmap
 
@@ -118,5 +119,5 @@ Decisiones técnicas: [`docs/decisions.md`](docs/decisions.md).
 | 6 | Calendario |
 | 7 | Visor de fotos y videos |
 | 8 | Tests y robustez |
-| 9 | Rendimiento con galerías grandes (esta) |
-| 10 | Release |
+| 9 | Rendimiento con galerías grandes |
+| 10 | Release (esta) |

@@ -3,7 +3,7 @@ description: >-
   Tu vida organizada como una línea de tiempo. Convierte la galería del
   dispositivo en un calendario visual de recuerdos, 100% local.
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   # drift 2.35 exige Dart >= 3.10; ver docs/decisions.md.
@@ -30,6 +30,9 @@ dependencies:
   # Reproducción de videos en el visor. Ver docs/decisions.md, D32.
   video_player: ^2.14.1
 
+  # Versión de la app en Ajustes. Ver docs/decisions.md, D54.
+  package_info_plus: ^10.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -40,6 +43,9 @@ dev_dependencies:
 
   # Para simular la plataforma de video en los tests del visor.
   video_player_platform_interface: ^6.9.0
+
+  # Genera los iconos de Android/iOS a partir de assets/icon (ver docs/release.md).
+  flutter_launcher_icons: ^0.14.4
 
   # Generador de código de drift.
   build_runner: ^2.15.1

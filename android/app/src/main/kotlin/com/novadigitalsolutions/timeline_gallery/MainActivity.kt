@@ -1,4 +1,4 @@
-package com.example.galeria_eventos
+package com.novadigitalsolutions.timeline_gallery
 
 import io.flutter.embedding.android.FlutterActivity
 
