@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:galeria_eventos/core/error/app_failure.dart';
+import 'package:galeria_eventos/core/widgets/error_state.dart';
 import 'package:galeria_eventos/core/widgets/state_message.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/gallery_permission.dart';
 import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_permission_controller.dart';
@@ -23,7 +23,10 @@ class TimelinePage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Tus recuerdos')),
       body: permission.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _ErrorMessage(error),
+        error: (error, _) => ErrorState(
+          error: error,
+          onRetry: () => ref.invalidate(galleryPermissionProvider),
+        ),
         data: (value) => value.canRead
             ? _IndexedMemories(
                 limited: value == GalleryPermission.limited,
@@ -53,7 +56,7 @@ class _IndexedMemories extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final months = ref.watch(monthBucketsProvider);
+    final rows = ref.watch(timelineRowsProvider);
     final sync = ref.watch(syncControllerProvider);
 
     return Column(
@@ -73,10 +76,13 @@ class _IndexedMemories extends ConsumerWidget {
           ),
         if (limited) LimitedAccessBanner(onManage: onManageLimited),
         Expanded(
-          child: months.when(
+          child: rows.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => _ErrorMessage(error),
-            data: (buckets) => buckets.isEmpty
+            error: (error, _) => ErrorState(
+              error: error,
+              onRetry: () => ref.invalidate(dayBucketsProvider),
+            ),
+            data: (rows) => rows.isEmpty
                 ? StateMessage(
                     icon: Icons.photo_library_outlined,
                     title: sync.isRunning
@@ -87,28 +93,10 @@ class _IndexedMemories extends ConsumerWidget {
                               'la primera vez.'
                         : 'No encontramos fotos ni videos en tu galería.',
                   )
-                : TimelineView(buckets: buckets),
+                : TimelineView(rows: rows),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ErrorMessage extends StatelessWidget {
-  const _ErrorMessage(this.error);
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return StateMessage(
-      icon: Icons.error_outline,
-      title: 'Algo salió mal',
-      message: switch (error) {
-        final AppFailure failure => failure.userMessage,
-        _ => const UnexpectedFailure('unclassified').userMessage,
-      },
     );
   }
 }

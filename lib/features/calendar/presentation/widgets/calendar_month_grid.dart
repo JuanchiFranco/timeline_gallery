@@ -4,9 +4,8 @@ import 'package:galeria_eventos/core/error/app_failure.dart';
 import 'package:galeria_eventos/core/formatting/es_date_format.dart';
 import 'package:galeria_eventos/features/calendar/domain/calendar.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
-import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_providers.dart';
 import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
-import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_image.dart';
+import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_picture.dart';
 
 /// Lado en píxeles de la portada de un día en la grilla.
 const _coverSize = 200;
@@ -28,8 +27,8 @@ class CalendarMonthGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final days = ref.watch(monthDaysProvider(month));
-    final summaries = summarizeDays(days.value ?? const []);
+    final days = ref.watch(dayBucketsProvider);
+    final summaries = summarizeMonth(days.value ?? const [], month);
     final now = _today ?? DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -58,18 +57,14 @@ class CalendarMonthGrid extends ConsumerWidget {
         if (days.hasError)
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(
-              days.error is AppFailure
-                  ? (days.error! as AppFailure).userMessage
-                  : const UnexpectedFailure('unclassified').userMessage,
-            ),
+            child: Text(userMessageFor(days.error!)),
           ),
       ],
     );
   }
 }
 
-class _DayCell extends ConsumerWidget {
+class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.date,
     required this.summary,
@@ -83,7 +78,7 @@ class _DayCell extends ConsumerWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final summary = this.summary;
@@ -104,17 +99,10 @@ class _DayCell extends ConsumerWidget {
                 : scheme.surfaceContainerLow,
           ),
           if (hasMemories) ...[
-            Image(
-              image: ThumbnailImage(
-                repository: ref.watch(thumbnailRepositoryProvider),
-                assetId: summary.cover.platformAssetId,
-                size: _coverSize,
-              ),
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-              excludeFromSemantics: true,
-              errorBuilder: (context, error, stackTrace) =>
-                  const SizedBox.shrink(),
+            ThumbnailPicture(
+              assetId: summary.coverAssetId,
+              size: _coverSize,
+              fallback: const SizedBox.shrink(),
             ),
             const ColoredBox(color: Colors.black38),
           ],

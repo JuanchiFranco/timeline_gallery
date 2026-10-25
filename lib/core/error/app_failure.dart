@@ -77,3 +77,9 @@ AppFailure asAppFailure(Object error, StackTrace stackTrace) {
     stackTrace: stackTrace,
   );
 }
+
+/// Mensaje para el usuario de cualquier error: el de su [AppFailure] o el
+/// genérico. Nunca expone el texto técnico.
+String userMessageFor(Object error) => error is AppFailure
+    ? error.userMessage
+    : const UnexpectedFailure('unclassified').userMessage;

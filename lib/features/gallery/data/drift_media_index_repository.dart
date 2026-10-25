@@ -4,8 +4,8 @@ import 'package:drift/drift.dart';
 import 'package:galeria_eventos/core/database/app_database.dart';
 import 'package:galeria_eventos/core/error/app_failure.dart';
 import 'package:galeria_eventos/core/logging/app_logger.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/media_index_repository.dart';
 
 /// Implementación del índice sobre Drift/SQLite.
@@ -71,19 +71,28 @@ class DriftMediaIndexRepository implements MediaIndexRepository {
       });
 
   @override
-  Future<Map<String, DateTime>> modifiedDates() =>
-      _guard('modifiedDates', () async {
-        final table = _db.mediaAssets;
-        final query = _db.selectOnly(table)
-          ..addColumns([table.platformAssetId, table.modifiedDate]);
-        final rows = await query.get();
-        return {
-          for (final row in rows)
-            row.read(table.platformAssetId)!: row
-                .read(table.modifiedDate)!
-                .toUtc(),
-        };
-      });
+  Future<Map<String, DateTime>> modifiedDatesOf(
+    Iterable<String> platformAssetIds,
+  ) => _guard('modifiedDatesOf', () async {
+    final ids = platformAssetIds.toList();
+    final table = _db.mediaAssets;
+    final result = <String, DateTime>{};
+    // Por lotes: SQLite limita las variables de un `IN (...)`.
+    for (var start = 0; start < ids.length; start += _deleteChunkSize) {
+      final end = start + _deleteChunkSize < ids.length
+          ? start + _deleteChunkSize
+          : ids.length;
+      final query = _db.selectOnly(table)
+        ..addColumns([table.platformAssetId, table.modifiedDate])
+        ..where(table.platformAssetId.isIn(ids.sublist(start, end)));
+      for (final row in await query.get()) {
+        result[row.read(table.platformAssetId)!] = row
+            .read(table.modifiedDate)!
+            .toUtc();
+      }
+    }
+    return result;
+  });
 
   @override
   Future<int> count() => _guard('count', _countQuery().getSingle);
@@ -114,20 +123,25 @@ class DriftMediaIndexRepository implements MediaIndexRepository {
   );
 
   @override
-  Stream<List<MonthBucket>> watchMonthBuckets() => _guardStream(
-    'watchMonthBuckets',
+  Stream<List<DayBucket>> watchDayBuckets() => _guardStream(
+    'watchDayBuckets',
     _db
         .customSelect(
           // `localtime` usa la zona horaria del dispositivo, la misma con la
-          // que `MonthKey` calcula el rango de cada mes. 2 = fecha desconocida.
+          // que se calculan los rangos de día y de mes en Dart. 2 = fecha
+          // desconocida. `platform_asset_id` junto a `MAX(capture_date)` toma
+          // el valor de la fila más reciente del día (comportamiento
+          // documentado de SQLite para una sola agregación MAX/MIN): es la
+          // portada.
           "SELECT CASE WHEN capture_date_source = 2 THEN 'none' "
-          "ELSE strftime('%Y-%m', capture_date, 'unixepoch', 'localtime') END "
-          'AS bucket, COUNT(*) AS total '
+          "ELSE strftime('%Y-%m-%d', capture_date, 'unixepoch', 'localtime') "
+          'END AS bucket, COUNT(*) AS total, MAX(capture_date) AS newest, '
+          'platform_asset_id AS cover '
           'FROM media_assets GROUP BY bucket',
           readsFrom: {_db.mediaAssets},
         )
         .watch()
-        .map(_toMonthBuckets),
+        .map(_toDayBuckets),
   );
 
   Selectable<int> _countQuery() {
@@ -239,25 +253,31 @@ MediaAssetsCompanion _toPlatformUpdateCompanion(
   );
 }
 
-List<MonthBucket> _toMonthBuckets(List<QueryRow> rows) {
-  final dated = <MonthBucket>[];
-  MonthBucket? undated;
+List<DayBucket> _toDayBuckets(List<QueryRow> rows) {
+  final dated = <DayBucket>[];
+  DayBucket? undated;
   for (final row in rows) {
     final bucket = row.read<String>('bucket');
     final total = row.read<int>('total');
+    final cover = row.read<String>('cover');
     if (bucket == 'none') {
-      undated = MonthBucket(const MonthKey.undated(), total);
+      undated = DayBucket(date: null, count: total, coverAssetId: cover);
       continue;
     }
     final parts = bucket.split('-');
     dated.add(
-      MonthBucket(MonthKey(int.parse(parts[0]), int.parse(parts[1])), total),
+      DayBucket(
+        date: DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        ),
+        count: total,
+        coverAssetId: cover,
+      ),
     );
   }
-  dated.sort((a, b) {
-    final byYear = b.key.year.compareTo(a.key.year);
-    return byYear != 0 ? byYear : b.key.month.compareTo(a.key.month);
-  });
+  dated.sort((a, b) => b.date!.compareTo(a.date!));
   return [...dated, ?undated];
 }
 

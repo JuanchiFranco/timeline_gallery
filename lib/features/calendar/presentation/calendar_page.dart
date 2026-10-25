@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:galeria_eventos/core/error/app_failure.dart';
 import 'package:galeria_eventos/core/formatting/es_date_format.dart';
+import 'package:galeria_eventos/core/widgets/error_state.dart';
 import 'package:galeria_eventos/core/widgets/state_message.dart';
 import 'package:galeria_eventos/features/calendar/domain/calendar.dart';
 import 'package:galeria_eventos/features/calendar/presentation/widgets/calendar_month_grid.dart';
@@ -22,13 +22,9 @@ class CalendarPage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Calendario')),
       body: buckets.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => StateMessage(
-          icon: Icons.error_outline,
-          title: 'Algo salió mal',
-          message: switch (error) {
-            final AppFailure failure => failure.userMessage,
-            _ => const UnexpectedFailure('unclassified').userMessage,
-          },
+        error: (error, _) => ErrorState(
+          error: error,
+          onRetry: () => ref.invalidate(dayBucketsProvider),
         ),
         data: (buckets) {
           final months = calendarMonths(buckets);

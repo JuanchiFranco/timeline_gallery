@@ -6,8 +6,10 @@ import 'package:galeria_eventos/core/error/app_failure.dart';
 import 'package:galeria_eventos/core/logging/app_logger.dart';
 import 'package:galeria_eventos/features/gallery/data/drift_media_index_repository.dart';
 import 'package:galeria_eventos/features/gallery/data/drift_sync_state_store.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/device_gallery_repository.dart';
+import 'package:galeria_eventos/features/gallery/domain/repositories/media_index_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/sync_state_store.dart';
 import 'package:galeria_eventos/features/gallery/domain/services/gallery_sync_service.dart';
 
@@ -173,6 +175,61 @@ void main() {
     expect(await state.read(SyncStateKey.checkpoint), '');
   });
 
+  test('si cambió la versión del mapeo, la siguiente es completa', () async {
+    await service().sync();
+    await state.write(SyncStateKey.mappingVersion, '1');
+
+    final result = await service().sync();
+
+    expect(result.mode, SyncMode.full);
+    expect(
+      await state.read(SyncStateKey.mappingVersion),
+      '${DefaultGallerySyncService.mappingVersion}',
+    );
+    // Con la versión al día, la siguiente vuelve a ser incremental.
+    expect((await service().sync()).mode, SyncMode.incremental);
+  });
+
+  test('un índice anterior a la versión del mapeo se re-escanea', () async {
+    await service().sync();
+    // Simula un estado guardado por una versión de la app sin esa clave.
+    await state.write(SyncStateKey.mappingVersion, '');
+
+    expect((await service().sync()).mode, SyncMode.full);
+  });
+
+  group('consultas al índice', () {
+    late _SpyIndex spy;
+
+    DefaultGallerySyncService spied() => DefaultGallerySyncService(
+      device: device,
+      index: spy,
+      state: state,
+      logger: AppLogger(enabled: false),
+      clock: () => now,
+      pageSize: 2,
+    );
+
+    setUp(() => spy = _SpyIndex(index));
+
+    test('nunca pide las fechas de todo el índice de una vez, solo las de '
+        'la página que lee', () async {
+      await spied().sync();
+
+      expect(spy.lookupSizes, isNotEmpty);
+      expect(spy.lookupSizes, everyElement(lessThanOrEqualTo(2)));
+    });
+
+    test('una incremental sin cambios consulta una sola página', () async {
+      await spied().sync();
+      spy.lookupSizes.clear();
+
+      await spied().sync();
+
+      expect(spy.lookupSizes, [2]);
+    });
+  });
+
   test('forceFull relee todo', () async {
     await service().sync();
     device.readPageCalls = 0;
@@ -235,4 +292,51 @@ class _FailingDevice implements DeviceGalleryRepository {
     required int page,
     required int pageSize,
   }) async => throw error;
+}
+
+/// Delega en el índice real y anota cuántos ids se consultan por llamada.
+class _SpyIndex implements MediaIndexRepository {
+  _SpyIndex(this._inner);
+
+  final MediaIndexRepository _inner;
+  final List<int> lookupSizes = [];
+
+  @override
+  Future<Map<String, DateTime>> modifiedDatesOf(Iterable<String> ids) {
+    final list = ids.toList();
+    lookupSizes.add(list.length);
+    return _inner.modifiedDatesOf(list);
+  }
+
+  @override
+  Future<void> upsertAll(List<MediaAsset> assets) => _inner.upsertAll(assets);
+
+  @override
+  Future<int> deleteByPlatformIds(Iterable<String> ids) =>
+      _inner.deleteByPlatformIds(ids);
+
+  @override
+  Future<Set<String>> knownPlatformIds() => _inner.knownPlatformIds();
+
+  @override
+  Future<int> count() => _inner.count();
+
+  @override
+  Stream<int> watchCount() => _inner.watchCount();
+
+  @override
+  Future<List<MediaAsset>> inRange({
+    required DateTime fromInclusive,
+    required DateTime toExclusive,
+  }) => _inner.inRange(fromInclusive: fromInclusive, toExclusive: toExclusive);
+
+  @override
+  Stream<List<MediaAsset>> watchRange({
+    required DateTime fromInclusive,
+    required DateTime toExclusive,
+  }) =>
+      _inner.watchRange(fromInclusive: fromInclusive, toExclusive: toExclusive);
+
+  @override
+  Stream<List<DayBucket>> watchDayBuckets() => _inner.watchDayBuckets();
 }

@@ -91,6 +91,15 @@ class DefaultGallerySyncService implements GallerySyncService {
   final int pageSize;
   final Duration fullResyncInterval;
 
+  /// Subir este número cada vez que cambie cómo se interpretan los assets de
+  /// la plataforma (por ejemplo, las reglas de fechas plausibles): la
+  /// sincronización incremental no vuelve a mirar lo que no cambió, así que lo
+  /// ya indexado conservaría el resultado de las reglas anteriores.
+  ///
+  /// Historial: 1 = reglas iniciales; 2 = fechas implausibles (< 1990 o
+  /// futuras) se descartan.
+  static const mappingVersion = 2;
+
   Future<SyncResult>? _running;
 
   @override
@@ -115,8 +124,11 @@ class DefaultGallerySyncService implements GallerySyncService {
         await _state.read(SyncStateKey.lastFullSyncAt),
       );
 
+      final indexedWith = await _state.read(SyncStateKey.mappingVersion);
+
       final needsFull =
           forceFull ||
+          indexedWith != '$mappingVersion' ||
           lastFull == null ||
           checkpoint != null ||
           _clock().toUtc().difference(lastFull) >= fullResyncInterval;
@@ -150,7 +162,6 @@ class DefaultGallerySyncService implements GallerySyncService {
     int total,
     SyncProgressCallback? onProgress,
   ) async {
-    final known = await _index.modifiedDates();
     // Solo un escaneo desde la página 0 ve todos los ids y puede inferir bajas.
     final seen = <String>{};
     var scanned = 0;
@@ -161,6 +172,11 @@ class DefaultGallerySyncService implements GallerySyncService {
       final assets = await _device.readPage(page: page, pageSize: pageSize);
       if (assets.isEmpty) break;
 
+      // Solo lo indexado de esta página, no todo el índice: con decenas de
+      // miles de assets, cargar el índice completo costaría más que el resto.
+      final known = await _index.modifiedDatesOf(
+        assets.map((a) => a.platformAssetId),
+      );
       await _index.upsertAll(assets);
       for (final asset in assets) {
         final previous = known[asset.platformAssetId];
@@ -183,7 +199,8 @@ class DefaultGallerySyncService implements GallerySyncService {
 
     var removed = 0;
     if (startPage == 0) {
-      final gone = known.keys.where((id) => !seen.contains(id)).toList();
+      final indexed = await _index.knownPlatformIds();
+      final gone = indexed.where((id) => !seen.contains(id)).toList();
       removed = await _index.deleteByPlatformIds(gone);
     }
 
@@ -205,6 +222,7 @@ class DefaultGallerySyncService implements GallerySyncService {
       return result + await _fullScan(0, total, onProgress);
     }
 
+    await _state.write(SyncStateKey.mappingVersion, '$mappingVersion');
     await _state.write(SyncStateKey.lastFullSyncAt, now);
     await _state.write(SyncStateKey.lastIncrementalSyncAt, now);
     _logger.info(
@@ -219,7 +237,6 @@ class DefaultGallerySyncService implements GallerySyncService {
     int total,
     SyncProgressCallback? onProgress,
   ) async {
-    final known = await _index.modifiedDates();
     var scanned = 0;
     var added = 0;
     var updated = 0;
@@ -228,6 +245,10 @@ class DefaultGallerySyncService implements GallerySyncService {
       final assets = await _device.readPage(page: page, pageSize: pageSize);
       if (assets.isEmpty) break;
       scanned += assets.length;
+
+      final known = await _index.modifiedDatesOf(
+        assets.map((a) => a.platformAssetId),
+      );
 
       final changed = <MediaAsset>[];
       for (final asset in assets) {

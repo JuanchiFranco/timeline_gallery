@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:galeria_eventos/app/theme/app_theme.dart';
 import 'package:galeria_eventos/core/error/app_failure.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/gallery_permission.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_tile.dart';
 
 import '../support/fakes.dart';
@@ -22,9 +22,7 @@ void main() {
         GalleryPermission.notDetermined,
       );
 
-      await tester.pumpWidget(
-        testApp(months: Stream.value(const []), permissions: permissions),
-      );
+      await tester.pumpWidget(testApp(permissions: permissions));
       await tester.pumpAndSettle();
 
       expect(
@@ -45,9 +43,7 @@ void main() {
         GalleryPermission.denied,
       );
 
-      await tester.pumpWidget(
-        testApp(months: Stream.value(const []), permissions: permissions),
-      );
+      await tester.pumpWidget(testApp(permissions: permissions));
       await tester.pumpAndSettle();
 
       expect(find.text('Sin acceso a tu galería'), findsOneWidget);
@@ -60,10 +56,28 @@ void main() {
       expect(permissions.requestCalls, 0);
     });
 
+    testWidgets('si falla leer el permiso, permite reintentar', (tester) async {
+      final permissions = FakeGalleryPermissionService(
+        GalleryPermission.granted,
+      )..statusError = const PermissionFailure('boom');
+
+      await tester.pumpWidget(testApp(permissions: permissions));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Algo salió mal'), findsOneWidget);
+      expect(find.textContaining('boom'), findsNothing);
+
+      permissions.statusError = null;
+      await tester.tap(find.text('Reintentar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Algo salió mal'), findsNothing);
+      expect(find.text('Aún no hay recuerdos para mostrar'), findsOneWidget);
+    });
+
     testWidgets('restringido solo informa, sin acciones', (tester) async {
       await tester.pumpWidget(
         testApp(
-          months: Stream.value(const []),
           permissions: FakeGalleryPermissionService(
             GalleryPermission.restricted,
           ),
@@ -83,11 +97,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        testApp(
-          months: septemberBuckets(3),
-          assets: september(3),
-          permissions: permissions,
-        ),
+        testApp(assets: september(3), permissions: permissions),
       );
       await tester.pumpAndSettle();
 
@@ -103,9 +113,7 @@ void main() {
     testWidgets('acceso completo no muestra el aviso de limitado', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(3), assets: september(3)),
-      );
+      await tester.pumpWidget(testApp(assets: september(3)));
       await tester.pumpAndSettle();
 
       expect(find.byType(MaterialBanner), findsNothing);
@@ -116,9 +124,7 @@ void main() {
     testWidgets('al tener permiso sincroniza una vez', (tester) async {
       final sync = FakeGallerySyncService();
 
-      await tester.pumpWidget(
-        testApp(months: Stream.value(const []), sync: sync),
-      );
+      await tester.pumpWidget(testApp(sync: sync));
       await tester.pumpAndSettle();
 
       expect(sync.syncCalls, 1);
@@ -130,13 +136,7 @@ void main() {
         GalleryPermission.notDetermined,
       );
 
-      await tester.pumpWidget(
-        testApp(
-          months: Stream.value(const []),
-          permissions: permissions,
-          sync: sync,
-        ),
-      );
+      await tester.pumpWidget(testApp(permissions: permissions, sync: sync));
       await tester.pumpAndSettle();
       expect(sync.syncCalls, 0);
 
@@ -151,9 +151,7 @@ void main() {
     ) async {
       final sync = FakeGallerySyncService(error: const SyncFailure('boom'));
 
-      await tester.pumpWidget(
-        testApp(months: Stream.value(const []), sync: sync),
-      );
+      await tester.pumpWidget(testApp(sync: sync));
       await tester.pumpAndSettle();
 
       expect(find.text(const SyncFailure('x').userMessage), findsOneWidget);
@@ -170,7 +168,7 @@ void main() {
 
   group('Timeline (estados base)', () {
     testWidgets('sin recuerdos muestra el estado vacío', (tester) async {
-      await tester.pumpWidget(testApp(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp());
       await tester.pumpAndSettle();
 
       expect(find.text('Aún no hay recuerdos para mostrar'), findsOneWidget);
@@ -179,10 +177,10 @@ void main() {
     testWidgets('mientras carga muestra un indicador de progreso', (
       tester,
     ) async {
-      final controller = StreamController<List<MonthBucket>>();
+      final controller = StreamController<List<DayBucket>>();
       addTearDown(controller.close);
 
-      await tester.pumpWidget(testApp(months: controller.stream));
+      await tester.pumpWidget(testApp(dayBuckets: controller.stream));
       await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -194,7 +192,7 @@ void main() {
       const failure = StorageFailure('boom');
 
       await tester.pumpWidget(
-        testApp(months: Stream<List<MonthBucket>>.error(failure)),
+        testApp(dayBuckets: Stream<List<DayBucket>>.error(failure)),
       );
       await tester.pumpAndSettle();
 
@@ -207,9 +205,7 @@ void main() {
 
   group('Timeline (contenido)', () {
     testWidgets('muestra año, mes, día y momento', (tester) async {
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(3), assets: september(3)),
-      );
+      await tester.pumpWidget(testApp(assets: september(3)));
       await tester.pumpAndSettle();
 
       expect(find.text('2026'), findsOneWidget);
@@ -221,9 +217,7 @@ void main() {
     });
 
     testWidgets('un momento grande resume el resto como +N', (tester) async {
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(10), assets: september(10)),
-      );
+      await tester.pumpWidget(testApp(assets: september(10)));
       await tester.pumpAndSettle();
 
       // 8 celdas: 7 miniaturas y la última con el resto (10 - 7 = 3).
@@ -244,16 +238,7 @@ void main() {
         buildAsset('dic', captureDate: DateTime(2025, 12, 5, 9).toUtc()),
       ];
 
-      await tester.pumpWidget(
-        testApp(
-          months: Stream.value(const [
-            MonthBucket(MonthKey(2026, 10), 1),
-            MonthBucket(MonthKey(2026, 9), 1),
-            MonthBucket(MonthKey(2025, 12), 1),
-          ]),
-          assets: assets,
-        ),
-      );
+      await tester.pumpWidget(testApp(assets: assets));
       await tester.pumpAndSettle();
 
       expect(find.text('2026'), findsOneWidget);
@@ -267,7 +252,6 @@ void main() {
     testWidgets('los assets sin fecha van bajo "Sin fecha"', (tester) async {
       await tester.pumpWidget(
         testApp(
-          months: Stream.value(const [MonthBucket(MonthKey.undated(), 1)]),
           assets: [
             buildAsset(
               'u1',
@@ -290,7 +274,7 @@ void main() {
     testWidgets('la barra inferior cambia entre las tres secciones', (
       tester,
     ) async {
-      await tester.pumpWidget(testApp(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Calendario'));

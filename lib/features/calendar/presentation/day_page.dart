@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:galeria_eventos/core/error/app_failure.dart';
 import 'package:galeria_eventos/core/formatting/es_date_format.dart';
+import 'package:galeria_eventos/core/widgets/error_state.dart';
 import 'package:galeria_eventos/core/widgets/state_message.dart';
-import 'package:galeria_eventos/features/calendar/presentation/providers/calendar_providers.dart';
+import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
 import 'package:galeria_eventos/features/timeline/presentation/widgets/moment_block.dart';
 
 /// Todos los recuerdos de un día, agrupados por momento.
@@ -23,13 +23,9 @@ class DayPage extends ConsumerWidget {
       ),
       body: days.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => StateMessage(
-          icon: Icons.error_outline,
-          title: 'Algo salió mal',
-          message: switch (error) {
-            final AppFailure failure => failure.userMessage,
-            _ => const UnexpectedFailure('unclassified').userMessage,
-          },
+        error: (error, _) => ErrorState(
+          error: error,
+          onRetry: () => ref.invalidate(dayMomentsProvider(date)),
         ),
         data: (days) {
           final moments = [for (final day in days) ...day.moments];

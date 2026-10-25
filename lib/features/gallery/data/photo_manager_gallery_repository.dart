@@ -14,8 +14,20 @@ class PhotoManagerGalleryRepository implements DeviceGalleryRepository {
   final AppLogger _logger;
 
   /// Más reciente primero, igual que el contrato del repositorio.
-  static final _filter = FilterOptionGroup(
+  ///
+  /// Se construye en cada lectura y no una vez: el filtro por defecto de
+  /// `photo_manager` acota la fecha de creación a "hasta ahora", y ese "ahora"
+  /// se fija al crearlo. Como valor estático, las fotos tomadas después de
+  /// abrir la app quedarían fuera de las siguientes sincronizaciones. Se
+  /// ignora el rango de fechas por completo: sanear fechas dudosas es trabajo
+  /// del mapeo, no un motivo para ocultar assets.
+  static FilterOptionGroup _filter() => FilterOptionGroup(
     orders: [const OrderOption(type: OrderOptionType.createDate, asc: false)],
+    createTimeCond: DateTimeCond(
+      min: DateTimeCond.zero,
+      max: DateTime.now(),
+      ignore: true,
+    ),
   );
 
   @override
@@ -45,7 +57,7 @@ class PhotoManagerGalleryRepository implements DeviceGalleryRepository {
     final paths = await PhotoManager.getAssetPathList(
       onlyAll: true,
       type: RequestType.common,
-      filterOption: _filter,
+      filterOption: _filter(),
     );
     return paths.isEmpty ? null : paths.first;
   }

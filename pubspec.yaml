@@ -35,6 +35,9 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+  # Reloj simulado para probar lógica con temporizadores (throttle, etc.).
+  fake_async: ^1.3.3
+
   # Para simular la plataforma de video en los tests del visor.
   video_player_platform_interface: ^6.9.0
 

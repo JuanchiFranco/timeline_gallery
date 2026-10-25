@@ -8,9 +8,10 @@ de recuerdos (año → mes → día → momento).
 servidores, ni analytics. La galería del dispositivo es la fuente de verdad;
 la app solo guarda un índice de metadatos.
 
-> Estado: **Fase 7 (Visor)** — permiso de galería, sincronización hacia el
-> índice local, línea de tiempo, calendario con detalle por día y visor de
-> fotos (con zoom) y videos. Siguen las fases de tests, performance y release.
+> Estado: **Fase 9 (Rendimiento)** — timeline perezoso por día, resumen único
+> por día para timeline y calendario, sincronización incremental en milisegundos
+> y cola de miniaturas. Ver los números en `docs/decisions.md` (Fase 9). Falta
+> el release.
 > El diseño completo está en el documento *Arquitectura: Galería como
 > Timeline de Recuerdos*.
 
@@ -66,6 +67,13 @@ flutter analyze
 flutter test
 ```
 
+Benchmarks de rendimiento con una galería sintética de ~50 000 assets (aparte de
+la suite normal porque son lentos y dependen de la máquina):
+
+```bash
+flutter test --run-skipped --tags perf test/perf
+```
+
 ## Configuración
 
 Sin configuración la app corre con valores por defecto. Para ajustarlos:
@@ -108,5 +116,7 @@ Decisiones técnicas: [`docs/decisions.md`](docs/decisions.md).
 | 4 | Sincronización incremental |
 | 5 | Timeline y agrupación por momentos |
 | 6 | Calendario |
-| 7 | Visor de fotos y videos (esta) |
-| 8–10 | Tests, performance, release |
+| 7 | Visor de fotos y videos |
+| 8 | Tests y robustez |
+| 9 | Rendimiento con galerías grandes (esta) |
+| 10 | Release |

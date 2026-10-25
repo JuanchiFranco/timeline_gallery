@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:galeria_eventos/core/formatting/es_date_format.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_tile.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,7 +17,7 @@ String _title(int year, int month) => '${EsDateFormat.month(month)} $year';
 void main() {
   group('Calendario', () {
     testWidgets('sin recuerdos muestra el estado vacío', (tester) async {
-      await tester.pumpWidget(testApp(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp());
       await tester.pumpAndSettle();
       await _openCalendar(tester);
 
@@ -30,9 +29,7 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
 
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(3), assets: september(3)),
-      );
+      await tester.pumpWidget(testApp(assets: september(3)));
       await tester.pumpAndSettle();
       await _openCalendar(tester);
 
@@ -57,15 +54,7 @@ void main() {
         buildAsset('sep', captureDate: DateTime(2026, 9, 5, 9).toUtc()),
         buildAsset('nov', captureDate: DateTime(2026, 11, 5, 9).toUtc()),
       ];
-      await tester.pumpWidget(
-        testApp(
-          months: Stream.value(const [
-            MonthBucket(MonthKey(2026, 11), 1),
-            MonthBucket(MonthKey(2026, 9), 1),
-          ]),
-          assets: assets,
-        ),
-      );
+      await tester.pumpWidget(testApp(assets: assets));
       await tester.pumpAndSettle();
       await _openCalendar(tester);
 
@@ -105,15 +94,7 @@ void main() {
           captureDate: DateTime(now.year, now.month, 1, 9).toUtc(),
         ),
       ];
-      await tester.pumpWidget(
-        testApp(
-          months: Stream.value([
-            MonthBucket(MonthKey(now.year, now.month), 1),
-            MonthBucket(MonthKey(previousMonth.year, previousMonth.month), 1),
-          ]),
-          assets: assets,
-        ),
-      );
+      await tester.pumpWidget(testApp(assets: assets));
       await tester.pumpAndSettle();
       await _openCalendar(tester);
 
@@ -133,9 +114,7 @@ void main() {
     });
 
     testWidgets('tocar un día con recuerdos abre sus momentos', (tester) async {
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(3), assets: september(3)),
-      );
+      await tester.pumpWidget(testApp(assets: september(3)));
       await tester.pumpAndSettle();
       await _openCalendar(tester);
 
@@ -160,9 +139,7 @@ void main() {
         ..physicalSize = const Size(800, 4000);
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(12), assets: september(12)),
-      );
+      await tester.pumpWidget(testApp(assets: september(12)));
       await tester.pumpAndSettle();
       await _openCalendar(tester);
       await tester.tap(find.text('23'));
@@ -173,9 +150,7 @@ void main() {
     });
 
     testWidgets('un día sin recuerdos no es tocable', (tester) async {
-      await tester.pumpWidget(
-        testApp(months: septemberBuckets(3), assets: september(3)),
-      );
+      await tester.pumpWidget(testApp(assets: september(3)));
       await tester.pumpAndSettle();
       await _openCalendar(tester);
 
@@ -188,7 +163,7 @@ void main() {
     testWidgets('una fecha inválida en la ruta muestra un aviso', (
       tester,
     ) async {
-      await tester.pumpWidget(testApp(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp());
       await tester.pumpAndSettle();
 
       GoRouter.of(
@@ -200,7 +175,7 @@ void main() {
     });
 
     testWidgets('un día sin assets (enlace antiguo) lo indica', (tester) async {
-      await tester.pumpWidget(testApp(months: Stream.value(const [])));
+      await tester.pumpWidget(testApp());
       await tester.pumpAndSettle();
 
       GoRouter.of(

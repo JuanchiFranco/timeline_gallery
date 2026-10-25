@@ -1,9 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:galeria_eventos/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/timeline/domain/timeline.dart';
 import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
 import 'package:galeria_eventos/features/viewer/domain/viewer.dart';
@@ -18,7 +16,7 @@ final viewerAssetsProvider = Provider.autoDispose
     .family<AsyncValue<List<MediaAsset>>, String>((ref, dayParam) {
       final days = switch (ViewerDay.parse(dayParam)) {
         DatedViewerDay(:final date) => ref.watch(dayMomentsProvider(date)),
-        _ => ref.watch(monthDaysProvider(const MonthKey.undated())),
+        _ => ref.watch(undatedDaysProvider),
       };
       return days.whenData(_flatten);
     });

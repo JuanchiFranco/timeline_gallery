@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/thumbnail_repository.dart';
+import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_queue.dart';
 
 /// Miniatura de un asset como [ImageProvider]. La clave es (id, tamaño), así
 /// el `ImageCache` de Flutter evita volver a pedirla a la plataforma al hacer
@@ -14,6 +16,7 @@ class ThumbnailImage extends ImageProvider<ThumbnailImage> {
     required this.assetId,
     required this.size,
     this.preserveAspect = false,
+    this.queue,
   });
 
   final ThumbnailRepository repository;
@@ -22,6 +25,20 @@ class ThumbnailImage extends ImageProvider<ThumbnailImage> {
 
   /// Conserva la proporción del original (visor) en vez de recortar a cuadrado.
   final bool preserveAspect;
+
+  /// Cola que acota y prioriza la carga (para las grillas). Sin cola, la carga
+  /// es inmediata, como necesita el visor.
+  final ThumbnailQueue? queue;
+
+  /// Clave que identifica esta miniatura en la [queue] y en el caché.
+  String get queueKey =>
+      keyFor(assetId: assetId, size: size, preserveAspect: preserveAspect);
+
+  static String keyFor({
+    required String assetId,
+    required int size,
+    bool preserveAspect = false,
+  }) => '$assetId@$size${preserveAspect ? 'a' : ''}';
 
   @override
   Future<ThumbnailImage> obtainKey(ImageConfiguration configuration) =>
@@ -32,22 +49,31 @@ class ThumbnailImage extends ImageProvider<ThumbnailImage> {
     ThumbnailImage key,
     ImageDecoderCallback decode,
   ) {
-    return OneFrameImageStreamCompleter(_load(decode));
+    return OneFrameImageStreamCompleter(_load(key, decode));
   }
 
-  Future<ImageInfo> _load(ImageDecoderCallback decode) async {
-    final bytes = await repository.load(
-      assetId,
-      size: size,
-      preserveAspect: preserveAspect,
-    );
-    if (bytes == null) {
-      throw StateError('thumbnail unavailable');
+  Future<ImageInfo> _load(
+    ThumbnailImage key,
+    ImageDecoderCallback decode,
+  ) async {
+    try {
+      Future<Uint8List?> read() =>
+          repository.load(assetId, size: size, preserveAspect: preserveAspect);
+      final bytes = await (queue?.run(queueKey, read) ?? read());
+      if (bytes == null) {
+        throw StateError('thumbnail unavailable');
+      }
+      final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+      final codec = await decode(buffer);
+      final frame = await codec.getNextFrame();
+      return ImageInfo(image: frame.image);
+    } on Object {
+      // El `ImageCache` guarda también las cargas fallidas: sin desalojarla, un
+      // fallo transitorio (o una carga cancelada por la cola al salir de
+      // pantalla) dejaría esta miniatura rota hasta reiniciar la app.
+      scheduleMicrotask(() => PaintingBinding.instance.imageCache.evict(key));
+      rethrow;
     }
-    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-    final codec = await decode(buffer);
-    final frame = await codec.getNextFrame();
-    return ImageInfo(image: frame.image);
   }
 
   @override

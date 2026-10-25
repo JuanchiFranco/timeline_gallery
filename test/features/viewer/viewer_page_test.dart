@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_tile.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -13,11 +12,8 @@ import '../../support/test_app.dart';
 
 /// `september(3)`, del más reciente al más antiguo en el visor:
 /// p2 (08:10, foto), p1 (08:05, foto), p0 (08:00, video).
-Widget _app({FakeMediaFileRepository? mediaFiles}) => testApp(
-  months: septemberBuckets(3),
-  assets: september(3),
-  mediaFiles: mediaFiles,
-);
+Widget _app({FakeMediaFileRepository? mediaFiles}) =>
+    testApp(assets: september(3), mediaFiles: mediaFiles);
 
 Future<void> _open(WidgetTester tester, String location) async {
   GoRouter.of(tester.element(find.byType(Scaffold).first)).go(location);
@@ -131,7 +127,6 @@ void main() {
     ) async {
       await tester.pumpWidget(
         testApp(
-          months: Stream.value(const [MonthBucket(MonthKey.undated(), 1)]),
           assets: [
             buildAsset(
               'u1',

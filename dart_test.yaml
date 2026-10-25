@@ -1,0 +1,7 @@
+tags:
+  # Benchmarks con galerías grandes. Son lentos y dependen de la máquina, así
+  # que no corren con `flutter test` a secas. Para ejecutarlos:
+  #   flutter test --run-skipped --tags perf
+  perf:
+    skip: "benchmark: usar --run-skipped --tags perf"
+    timeout: 5x
