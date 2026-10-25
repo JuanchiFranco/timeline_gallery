@@ -32,13 +32,8 @@ class ViewerPage extends ConsumerWidget {
               child: CircularProgressIndicator(color: Colors.white54),
             ),
           ),
-          error: (error, _) => _WithBack(
-            child: _Message(
-              error is AppFailure
-                  ? error.userMessage
-                  : const UnexpectedFailure('unclassified').userMessage,
-            ),
-          ),
+          error: (error, _) =>
+              _WithBack(child: _Message(userMessageFor(error))),
           data: (list) => list.isEmpty
               ? const _WithBack(child: _Message('Este recuerdo ya no está'))
               : _ViewerPager(assets: list, initialId: assetId),

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:galeria_eventos/core/formatting/duration_format.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_providers.dart';
-import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_image.dart';
+import 'package:galeria_eventos/features/timeline/presentation/widgets/thumbnail_picture.dart';
 
 /// Lado en píxeles de la miniatura pedida a la plataforma. Cubre una celda de
 /// ~90 dp a 3x de densidad sin pedir más datos de los necesarios.
@@ -11,7 +9,7 @@ const _thumbnailSize = 300;
 
 /// Celda cuadrada con la miniatura de un asset. Si es video muestra la
 /// duración; si [overflow] > 0 se atenúa y muestra "+N".
-class ThumbnailTile extends ConsumerWidget {
+class ThumbnailTile extends StatelessWidget {
   const ThumbnailTile({
     required this.asset,
     this.overflow = 0,
@@ -26,9 +24,8 @@ class ThumbnailTile extends ConsumerWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final repository = ref.watch(thumbnailRepositoryProvider);
 
     final tile = ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -37,16 +34,10 @@ class ThumbnailTile extends ConsumerWidget {
         children: [
           ColoredBox(
             color: scheme.surfaceContainerHighest,
-            child: Image(
-              image: ThumbnailImage(
-                repository: repository,
-                assetId: asset.platformAssetId,
-                size: _thumbnailSize,
-              ),
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-              excludeFromSemantics: true,
-              errorBuilder: (context, error, stackTrace) => Icon(
+            child: ThumbnailPicture(
+              assetId: asset.platformAssetId,
+              size: _thumbnailSize,
+              fallback: Icon(
                 asset.isVideo ? Icons.videocam_outlined : Icons.image_outlined,
                 color: scheme.onSurfaceVariant,
               ),

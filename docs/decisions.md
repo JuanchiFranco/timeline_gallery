@@ -199,3 +199,158 @@ sigue en el asset que se estaba viendo (mismo criterio que el calendario).
 Pendiente para fases siguientes: marcar favoritos desde el visor, compartir y
 borrar (el borrado del dispositivo es una acción destructiva que requiere su
 propio diseño y confirmación).
+
+## Fase 8
+
+**D38. Los adaptadores de `photo_manager` se prueban a nivel de canal**
+(`test/support/photo_manager_channel.dart`), no con un fake de nuestras
+interfaces: así corre el código real del plugin (serialización de opciones,
+conversión de respuestas) y se ve lo que de verdad viaja a la plataforma. Límite
+conocido: `AssetEntity.file` y `presentLimited` solo actúan en Android/iOS
+(usan `dart:io Platform`), por lo que esos dos caminos solo se ejercitan en
+dispositivo.
+
+**D39. Bug corregido: el filtro de lectura ya no congela "ahora".** El filtro
+por defecto de `photo_manager` acota la fecha de creación a "hasta ahora", y
+ese instante se fija al construirlo. Como `static final`, las fotos tomadas
+*después* de abrir la app quedaban fuera de toda sincronización hasta
+reiniciarla. Ahora se construye en cada lectura y se ignora el rango de fechas;
+queda cubierto por un test sobre lo que viaja por el canal.
+
+**D40. Fechas plausibles.** Una fecha de captura solo se acepta entre
+1990-01-01 y mañana (margen de un día por husos). Fuera de eso (relojes sin
+configurar, 1970/1980, o adelantados) se usa la fecha de modificación si es
+plausible, y si no, el asset queda "sin fecha". Evita una foto "de 2099" al tope
+del timeline y un calendario de cientos de meses. La marca de modificación
+(`modifiedDate`) se conserva cruda: es solo un indicador de cambio.
+
+**D41. `mappingVersion` fuerza un re-escaneo cuando cambian las reglas de
+interpretación.** La sincronización incremental no vuelve a mirar lo que no
+cambió, así que lo ya indexado conservaría el resultado de las reglas
+anteriores. Subir `DefaultGallerySyncService.mappingVersion` (historial en su
+documentación) hace que la siguiente sincronización sea completa.
+
+**D42. Errores globales registrados, no perdidos.**
+`installGlobalErrorHandlers` engancha `FlutterError.onError` y
+`PlatformDispatcher.onError` y registra solo el *tipo* del error (regla de
+privacidad del logger). En release se reemplaza la pantalla roja/gris por un
+aviso discreto (`FallbackErrorWidget`). `main` crea el `ProviderContainer`
+para instalarlos antes de construir la UI.
+
+**D43. Todo error de pantalla ofrece "Reintentar"** (`ErrorState`): permiso,
+meses, calendario y día. Antes un fallo transitorio (por ejemplo, leer el
+permiso) dejaba la pantalla atascada hasta reiniciar. `userMessageFor` es el
+único lugar que decide qué texto ve el usuario ante un error.
+
+**D44. Drift reabre una base cerrada**, así que "base cerrada" no sirve para
+simular fallos de almacenamiento en tests; se simula eliminando las tablas
+(SQLite responde "no such table") y se verifica que llega un `StorageFailure`
+sin filtrar el error original.
+
+**D45. Prueba de punta a punta** (`test/app/pipeline_test.dart`): galería
+simulada → servicio de sync real → Drift real en memoria → providers →
+pantallas, incluyendo altas, bajas y abrir el visor. En tests de widgets Drift
+necesita el event loop real: las consultas se dejan correr con
+`tester.runAsync` + `pump`, y la base se cierra dentro del test (cerrarla desde
+`tearDown` se cuelga bajo el reloj simulado).
+
+## Fase 9
+
+Se midió primero (`test/perf`, ver más abajo) con una galería sintética de
+51 731 assets en 130 meses, con un mes "pesado" de 3 339 fotos. La capa de datos
+ya era rápida; los problemas estaban en la interfaz y en la sincronización
+incremental.
+
+**D46. Un único resumen por día alimenta el timeline y el calendario.**
+`watchDayBuckets` (un `GROUP BY` sobre el día local) devuelve fecha, cantidad y
+portada de cada día (~3 000 filas para 10 años). De ahí se derivan los meses
+(`monthBucketsFrom`) y las filas del timeline (`buildTimelineRows`). Reemplaza a
+`watchMonthBuckets` y a `monthDaysProvider`, que cargaba **todos** los assets de
+un mes para poder dibujarlo. La portada sale de la misma consulta
+(`platform_asset_id` junto a `MAX(capture_date)` toma la fila más reciente del
+grupo; comportamiento documentado de SQLite para una sola agregación MAX, con
+test). El calendario ya no carga ningún asset para dibujar un mes.
+
+**D47. El timeline es una lista plana y perezosa de filas** (año, mes, día),
+no una columna por mes. Cada día pide sus propios assets (`dayMomentsProvider`,
+`autoDispose`) solo al aparecer, y los suelta al salir. Un mes de 3 339 fotos pasó
+de construir 872 miniaturas a 32. Las filas tienen id estable
+(`findChildIndexCallback`) para conservar su estado cuando la sincronización
+agrega días arriba.
+
+**D48. Altura reservada mientras un día carga.** Una lista perezosa cuyos
+elementos cambian de altura al cargar salta al hacer scroll hacia arriba. Se
+recuerda la altura real de cada día (`dayHeightCacheProvider`) y, la primera vez,
+se reserva una estimada según su cantidad. Limitación: la primera vez que se
+baja por un día la estimación puede no coincidir con la altura real (depende de
+cuántos momentos tenga).
+
+**D49. `throttleLatest` (300 ms) sobre el resumen por día.** Durante la primera
+sincronización la base emite una vez por página escrita; sin limitar, la lista se
+reconstruiría cientos de veces con datos que quedan viejos al instante. La
+primera emisión sale al instante y no deja ningún `Timer` vivo si no hay ráfaga.
+Nota: la consulta SQL sí se re-ejecuta en cada escritura (corre en el isolate de
+la base); lo que se limita es el trabajo de la interfaz.
+
+**D50. El sync consulta el índice por página, no entero.** `modifiedDates()`
+cargaba el mapa completo de 51 731 assets en *cada* reanudación (349 ms aquí;
+segundos en un teléfono) solo para mirar una o dos páginas. Ahora
+`modifiedDatesOf(ids)` consulta únicamente los ids de la página (por lotes de
+500, por el límite de variables de SQLite). Sincronización incremental sin
+cambios: **468 ms → 6–8 ms**. Las bajas se siguen detectando al final de un
+escaneo completo con `knownPlatformIds`.
+
+**D51. Cola de miniaturas** (`ThumbnailQueue`): máximo 4 cargas simultáneas, las
+más recientes primero (LIFO: lo que acaba de aparecer es lo que se mira) y se
+descarta, sin llegar a la plataforma, lo que ya salió de pantalla. Cada celda
+declara su interés al montarse y lo retira al desmontarse
+(`ThumbnailPicture`). El visor no usa la cola: necesita su imagen de inmediato.
+
+**D52. Bug corregido: las cargas fallidas se quedaban cacheadas.** El
+`ImageCache` de Flutter conserva también una carga que falló; `NetworkImage` la
+desaloja a mano y `ThumbnailImage` no lo hacía, así que un fallo transitorio
+dejaba el icono de relleno hasta reiniciar la app. Ahora se desaloja siempre que
+falla (incluidas las canceladas por la cola), y al volver a la celda se reintenta.
+
+**D53. Benchmarks aparte de la suite normal.** `test/perf` (etiqueta `perf`)
+no corre con `flutter test` a secas porque es lento y depende de la máquina:
+
+```bash
+flutter test --run-skipped --tags perf test/perf
+```
+
+Miden con `flutter_tester` en un equipo de escritorio, sin GPU ni la velocidad de
+un teléfono: sirven para comparar antes y después, no como valores absolutos. Los
+límites que afirman solo atrapan regresiones catastróficas.
+
+| Medición (51 731 assets) | Antes | Después |
+| --- | --- | --- |
+| Miniaturas construidas, mes de 3 339 fotos | 872 | 32 |
+| Primer frame del mes pesado (con la app ya arrancada) | ~1 540 ms | ~250 ms |
+| Sincronización incremental sin cambios | 468 ms | 6–8 ms |
+| Peor paso al recorrer el timeline | 377 ms | 115–144 ms |
+| p95 al recorrer el timeline | 371 ms | ~97 ms |
+| Sincronización completa inicial | ~0,8 s | ~0,9 s |
+| Re-sincronización completa forzada | ~1,1 s | ~1,3 s |
+
+El costo medio por paso de scroll subió (de 15 ms a ~65 ms) porque ahora el trabajo
+se reparte en cada paso en vez de concentrarse en un tirón enorme al entrar a un
+mes grande; el peor caso, que es lo que se percibe como tirón, bajó a un tercio.
+La re-sincronización completa es algo más lenta por las consultas por página, a
+cambio de no cargar el índice entero; ocurre una vez por semana.
+
+### Lo que no se hizo (y por qué)
+
+* **No se cambió el tamaño del `ImageCache`.** El valor por defecto (100 MB, unas
+  280 miniaturas de 300 px decodificadas) cubre varias pantallas; subirlo es un
+  riesgo de memoria en equipos modestos que conviene decidir con datos de
+  dispositivo real.
+* **Cada miniatura hace dos llamadas a la plataforma** (`AssetEntity.fromId` y
+  luego la miniatura). `photo_manager` no expone la segunda sin la primera en su
+  API pública; la cola limita el efecto.
+* **`undatedDaysProvider` carga todos los assets sin fecha** para mostrar 8.
+  Aceptable mientras sean pocos; si una galería tiene miles sin fecha, conviene
+  una consulta con límite.
+* **Medir en un teléfono real.** Todo lo anterior es relativo; el criterio de
+  éxito de esta fase se confirma con el perfil de rendimiento de Flutter
+  (DevTools) en dispositivo con la galería real.

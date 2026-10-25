@@ -1,13 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:galeria_eventos/features/calendar/domain/calendar.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
-import 'package:galeria_eventos/features/timeline/domain/timeline_grouping.dart';
-
-import '../../../support/fixtures.dart';
-
-MediaAsset _at(String id, int month, int day, int hour) =>
-    buildAsset(id, captureDate: DateTime(2026, month, day, hour).toUtc());
 
 void main() {
   group('monthGridCells', () {
@@ -48,33 +42,42 @@ void main() {
     });
   });
 
-  group('summarizeDays', () {
-    test('cuenta por día y elige como portada el asset más reciente', () {
-      final days = groupIntoDays([
-        _at('late', 9, 23, 20),
-        _at('mid', 9, 23, 12),
-        _at('early', 9, 23, 8),
-        _at('other', 9, 5, 9),
-      ]);
+  group('summarizeMonth', () {
+    DayBucket day(int month, int d, int count, String cover) => DayBucket(
+      date: DateTime(2026, month, d),
+      count: count,
+      coverAssetId: cover,
+    );
 
-      final summary = summarizeDays(days);
+    test('toma solo los días del mes pedido', () {
+      final summary = summarizeMonth([
+        day(10, 2, 1, 'oct'),
+        day(9, 23, 3, 'late'),
+        day(9, 5, 1, 'other'),
+        day(8, 5, 9, 'ago'),
+      ], const MonthKey(2026, 9));
 
       expect(summary.keys, unorderedEquals([23, 5]));
       expect(summary[23]!.count, 3);
-      expect(summary[23]!.cover.platformAssetId, 'late');
-      expect(summary[5]!.count, 1);
+      expect(summary[23]!.coverAssetId, 'late');
+      expect(summary[5]!.coverAssetId, 'other');
+    });
+
+    test('no mezcla el mismo mes de otro año', () {
+      final summary = summarizeMonth([
+        DayBucket(date: DateTime(2025, 9, 23), count: 7, coverAssetId: 'viejo'),
+        day(9, 23, 1, 'nuevo'),
+      ], const MonthKey(2026, 9));
+
+      expect(summary[23]!.coverAssetId, 'nuevo');
     });
 
     test('ignora el grupo sin fecha', () {
-      final days = groupIntoDays([
-        buildAsset(
-          'u',
-          captureDate: DateTime.utc(1970),
-          source: CaptureDateSource.unknown,
-        ),
-      ]);
+      final summary = summarizeMonth(const [
+        DayBucket(date: null, count: 5, coverAssetId: 'u'),
+      ], const MonthKey(2026, 9));
 
-      expect(summarizeDays(days), isEmpty);
+      expect(summary, isEmpty);
     });
   });
 

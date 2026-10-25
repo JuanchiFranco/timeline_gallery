@@ -6,6 +6,11 @@ enum SyncStateKey {
   /// `MediaStore.getGeneration()` visto en la última sincronización (Android).
   mediaStoreGeneration,
 
+  /// Versión de las reglas con que se interpretan los assets de la plataforma
+  /// (fechas, ubicación, rotación). Si cambia, lo ya indexado quedó con las
+  /// reglas viejas y hay que re-escanear todo.
+  mappingVersion,
+
   lastFullSyncAt,
   lastIncrementalSyncAt,
 

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
-import 'package:galeria_eventos/features/timeline/domain/timeline.dart';
 
 /// Celdas de la grilla de un mes, con la semana empezando en lunes: `null`
 /// para los huecos antes del día 1 y después del último día, de modo que la
@@ -22,21 +21,21 @@ List<DateTime?> monthGridCells(int year, int month) {
 /// como portada (el más reciente).
 @immutable
 class DaySummary {
-  const DaySummary({required this.count, required this.cover});
+  const DaySummary({required this.count, required this.coverAssetId});
 
   final int count;
-  final MediaAsset cover;
+  final String coverAssetId;
 }
 
-/// Resumen por día del mes (clave: día del mes, 1 a 31) a partir de los días
-/// ya agrupados. Ignora el grupo sin fecha.
-Map<int, DaySummary> summarizeDays(List<TimelineDay> days) {
+/// Resumen por día del mes (clave: día del mes, 1 a 31) a partir del resumen
+/// de todo el índice. Ignora los demás meses y el grupo sin fecha.
+Map<int, DaySummary> summarizeMonth(List<DayBucket> days, MonthKey month) {
   return {
     for (final day in days)
-      if (day.date != null && day.moments.isNotEmpty)
+      if (!day.isUndated && day.month == month)
         day.date!.day: DaySummary(
           count: day.count,
-          cover: day.moments.first.assets.first,
+          coverAssetId: day.coverAssetId,
         ),
   };
 }

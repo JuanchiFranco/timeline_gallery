@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:galeria_eventos/core/error/app_failure.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/gallery_permission.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/device_gallery_repository.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/gallery_permission_service.dart';
 import 'package:galeria_eventos/features/gallery/domain/repositories/media_file_repository.dart';
@@ -22,12 +22,20 @@ class FakeGalleryPermissionService implements GalleryPermissionService {
   GalleryPermission current;
   final GalleryPermission onRequest;
 
+  /// Si no es `null`, `status()` falla con él (una vez que se quita, vuelve a
+  /// responder normal).
+  AppFailure? statusError;
+
   int requestCalls = 0;
   int openSettingsCalls = 0;
   int manageLimitedCalls = 0;
 
   @override
-  Future<GalleryPermission> status() async => current;
+  Future<GalleryPermission> status() async {
+    final error = statusError;
+    if (error != null) throw error;
+    return current;
+  }
 
   @override
   Future<GalleryPermission> request() async {
@@ -93,12 +101,17 @@ class FakeGallerySyncService implements GallerySyncService {
 
   int syncCalls = 0;
 
+  /// Si se define, se ejecuta dentro de `sync` (para emitir progreso y
+  /// quedarse esperando a que el test lo libere).
+  Future<void> Function(SyncProgressCallback? onProgress)? script;
+
   @override
   Future<SyncResult> sync({
     bool forceFull = false,
     SyncProgressCallback? onProgress,
   }) async {
     syncCalls++;
+    await script?.call(onProgress);
     final failure = error;
     if (failure != null) throw failure;
     return const SyncResult(mode: SyncMode.incremental);
@@ -139,8 +152,39 @@ class FakeMediaIndexRepository implements MediaIndexRepository {
   Stream<int> watchCount() => Stream.value(assets.length);
 
   @override
-  Stream<List<MonthBucket>> watchMonthBuckets() =>
-      throw UnimplementedError('override monthBucketsProvider in the test');
+  Stream<List<DayBucket>> watchDayBuckets() {
+    // Mismo criterio que la consulta real: día local, portada = el más
+    // reciente, y los assets sin fecha confiable en un grupo aparte.
+    final byDay = <DateTime, List<MediaAsset>>{};
+    final undated = <MediaAsset>[];
+    for (final asset in assets) {
+      if (asset.captureDateSource == CaptureDateSource.unknown) {
+        undated.add(asset);
+        continue;
+      }
+      final local = asset.captureDate.toLocal();
+      byDay
+          .putIfAbsent(DateTime(local.year, local.month, local.day), () => [])
+          .add(asset);
+    }
+    MediaAsset newest(List<MediaAsset> list) =>
+        list.reduce((a, b) => b.captureDate.isAfter(a.captureDate) ? b : a);
+    final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+    return Stream.value([
+      for (final day in days)
+        DayBucket(
+          date: day,
+          count: byDay[day]!.length,
+          coverAssetId: newest(byDay[day]!).platformAssetId,
+        ),
+      if (undated.isNotEmpty)
+        DayBucket(
+          date: null,
+          count: undated.length,
+          coverAssetId: undated.first.platformAssetId,
+        ),
+    ]);
+  }
 
   @override
   Future<void> upsertAll(List<MediaAsset> assets) => throw UnimplementedError();
@@ -153,7 +197,8 @@ class FakeMediaIndexRepository implements MediaIndexRepository {
   Future<Set<String>> knownPlatformIds() => throw UnimplementedError();
 
   @override
-  Future<Map<String, DateTime>> modifiedDates() => throw UnimplementedError();
+  Future<Map<String, DateTime>> modifiedDatesOf(Iterable<String> ids) =>
+      throw UnimplementedError();
 }
 
 /// Miniaturas que nunca están disponibles: la UI muestra su placeholder.

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:galeria_eventos/app/app.dart';
+import 'package:galeria_eventos/features/gallery/domain/entities/day_bucket.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/gallery_permission.dart';
 import 'package:galeria_eventos/features/gallery/domain/entities/media_asset.dart';
-import 'package:galeria_eventos/features/gallery/domain/entities/month_bucket.dart';
+import 'package:galeria_eventos/features/gallery/domain/repositories/media_index_repository.dart';
 import 'package:galeria_eventos/features/gallery/presentation/providers/gallery_providers.dart';
 import 'package:galeria_eventos/features/timeline/presentation/providers/timeline_providers.dart';
 
@@ -21,23 +23,26 @@ List<MediaAsset> september(int count) => [
     ),
 ];
 
-Stream<List<MonthBucket>> septemberBuckets(int count) =>
-    Stream.value([MonthBucket(const MonthKey(2026, 9), count)]);
-
+/// La app con la plataforma simulada. Los resúmenes por día (que alimentan el
+/// timeline y el calendario) se derivan de [assets]; pasar [dayBuckets] los
+/// reemplaza, para probar los estados de carga y de error.
 Widget testApp({
-  required Stream<List<MonthBucket>> months,
   List<MediaAsset> assets = const [],
+  Stream<List<DayBucket>>? dayBuckets,
   FakeGalleryPermissionService? permissions,
   FakeGallerySyncService? sync,
   FakeMediaFileRepository? mediaFiles,
+  MediaIndexRepository? index,
+  List<Override> overrides = const [],
 }) {
   return ProviderScope(
     // Sin reintentos automáticos: los tests de error deben ser deterministas.
     retry: (retryCount, error) => null,
     overrides: [
-      monthBucketsProvider.overrideWith((ref) => months),
+      if (dayBuckets != null)
+        dayBucketsProvider.overrideWith((ref) => dayBuckets),
       mediaIndexRepositoryProvider.overrideWithValue(
-        FakeMediaIndexRepository(assets),
+        index ?? FakeMediaIndexRepository(assets),
       ),
       thumbnailRepositoryProvider.overrideWithValue(FakeThumbnailRepository()),
       mediaFileRepositoryProvider.overrideWithValue(
@@ -49,6 +54,7 @@ Widget testApp({
       gallerySyncServiceProvider.overrideWithValue(
         sync ?? FakeGallerySyncService(),
       ),
+      ...overrides,
     ],
     child: const GaleriaApp(),
   );
