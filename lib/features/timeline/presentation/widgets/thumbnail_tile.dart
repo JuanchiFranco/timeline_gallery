@@ -74,7 +74,21 @@ class ThumbnailTile extends StatelessWidget {
       button: true,
       label: asset.isVideo ? 'Abrir video' : 'Abrir foto',
       excludeSemantics: true,
-      child: GestureDetector(onTap: onTap, child: tile),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          tile,
+          Positioned.fill(
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: onTap,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -22,7 +22,7 @@ class HomeShell extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.view_timeline_outlined),
             selectedIcon: Icon(Icons.view_timeline),
-            label: 'Timeline',
+            label: 'Recuerdos',
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),

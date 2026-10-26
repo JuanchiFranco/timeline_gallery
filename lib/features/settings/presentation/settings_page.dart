@@ -205,6 +205,7 @@ class _PrivacySection extends StatelessWidget {
     return const Column(
       children: [
         ListTile(
+          isThreeLine: true,
           leading: Icon(Icons.lock_outline),
           title: Text('100% local'),
           subtitle: Text(
@@ -214,6 +215,7 @@ class _PrivacySection extends StatelessWidget {
           ),
         ),
         ListTile(
+          isThreeLine: true,
           leading: Icon(Icons.storage_outlined),
           title: Text('Qué guarda la app'),
           subtitle: Text(

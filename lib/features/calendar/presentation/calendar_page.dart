@@ -52,7 +52,15 @@ class _CalendarBody extends StatefulWidget {
 }
 
 class _CalendarBodyState extends State<_CalendarBody> {
-  static const _weekdays = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  static const _weekdays = [
+    ('L', 'lunes'),
+    ('M', 'martes'),
+    ('X', 'miércoles'),
+    ('J', 'jueves'),
+    ('V', 'viernes'),
+    ('S', 'sábado'),
+    ('D', 'domingo'),
+  ];
 
   late final PageController _controller;
   late MonthKey _current;
@@ -85,11 +93,18 @@ class _CalendarBodyState extends State<_CalendarBody> {
 
   int get _index => widget.months.indexOf(_current);
 
-  void _goTo(int index) => _controller.animateToPage(
-    index,
-    duration: const Duration(milliseconds: 250),
-    curve: Curves.easeOutCubic,
-  );
+  void _goTo(int index) {
+    // Respeta "Quitar animaciones" / "Reducir movimiento" del sistema.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.jumpToPage(index);
+      return;
+    }
+    _controller.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,22 +146,32 @@ class _CalendarBodyState extends State<_CalendarBody> {
             ],
           ),
         ),
-        if (todayIndex >= 0 && _current != thisMonth)
-          TextButton(
-            onPressed: () => _goTo(todayIndex),
-            child: const Text('Ir a hoy'),
-          ),
+        // Espacio reservado: sin él la grilla se corre cada vez que aparece o
+        // desaparece el botón al cambiar de mes.
+        SizedBox(
+          height: 40,
+          child: todayIndex >= 0 && _current != thisMonth
+              ? TextButton(
+                  onPressed: () => _goTo(todayIndex),
+                  child: const Text('Ir a hoy'),
+                )
+              : null,
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
           child: Row(
             children: [
-              for (final label in _weekdays)
+              for (final (initial, name) in _weekdays)
                 Expanded(
                   child: Center(
-                    child: Text(
-                      label,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    child: Semantics(
+                      label: name,
+                      excludeSemantics: true,
+                      child: Text(
+                        initial,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),

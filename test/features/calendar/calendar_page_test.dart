@@ -114,6 +114,13 @@ void main() {
     });
 
     testWidgets('tocar un día con recuerdos abre sus momentos', (tester) async {
+      // Tamaño de teléfono: en el lienzo por defecto (800x600) el día 23
+      // queda bajo la barra de navegación y hay que desplazar la grilla.
+      tester.view
+        ..devicePixelRatio = 1
+        ..physicalSize = const Size(400, 800);
+      addTearDown(tester.view.reset);
+
       await tester.pumpWidget(testApp(assets: september(3)));
       await tester.pumpAndSettle();
       await _openCalendar(tester);

@@ -81,6 +81,8 @@ class _MonthHeader extends StatelessWidget {
         header: true,
         child: Text(
           '$title · ${row.count}',
+          semanticsLabel:
+              '$title, ${row.count == 1 ? '1 recuerdo' : '${row.count} recuerdos'}',
           style: Theme.of(context).textTheme.titleLarge,
         ),
       ),
@@ -104,7 +106,11 @@ class _DayRowView extends ConsumerWidget {
       loading: () => SizedBox(
         height:
             cache[row.date] ??
-            _estimatedDayHeight(MediaQuery.sizeOf(context).width, row.count),
+            _estimatedDayHeight(
+              MediaQuery.sizeOf(context).width,
+              row.count,
+              MediaQuery.textScalerOf(context),
+            ),
       ),
       error: (error, _) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -164,11 +170,17 @@ class _RememberHeightState extends State<_RememberHeight> {
 
 /// Altura aproximada de un día con un solo momento, para reservar espacio
 /// antes de conocer su contenido real.
-double _estimatedDayHeight(double screenWidth, int count) {
+double _estimatedDayHeight(
+  double screenWidth,
+  int count,
+  TextScaler textScaler,
+) {
   const columns = 4;
   const spacing = 4.0;
   const horizontalPadding = 32.0;
-  const chrome = 12 + 20 + 8 + 22; // relleno + día + relleno + etiqueta
+  // Relleno + día + relleno + etiqueta; el texto crece con el tamaño de letra
+  // del sistema, el relleno no.
+  final chrome = 12 + 8 + textScaler.scale(20 + 22);
   final tile =
       (screenWidth - horizontalPadding - spacing * (columns - 1)) / columns;
   final tiles = count < 8 ? count : 8;

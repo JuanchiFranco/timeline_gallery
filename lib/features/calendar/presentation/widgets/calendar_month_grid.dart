@@ -84,9 +84,10 @@ class _DayCell extends StatelessWidget {
     final summary = this.summary;
     final hasMemories = summary != null;
 
+    final count = summary?.count ?? 0;
     final label =
         '${date.day} de ${EsDateFormat.month(date.month).toLowerCase()}'
-        '${hasMemories ? ', ${summary.count} recuerdos' : ''}';
+        '${hasMemories ? ', ${count == 1 ? '1 recuerdo' : '$count recuerdos'}' : ''}';
 
     final cell = ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -104,7 +105,8 @@ class _DayCell extends StatelessWidget {
               size: _coverSize,
               fallback: const SizedBox.shrink(),
             ),
-            const ColoredBox(color: Colors.black38),
+            // Oscurece lo justo para que el número se lea sobre fotos claras.
+            const ColoredBox(color: Colors.black54),
           ],
           Center(
             child: Text(
@@ -141,7 +143,23 @@ class _DayCell extends StatelessWidget {
       label: label,
       button: hasMemories,
       excludeSemantics: true,
-      child: hasMemories ? GestureDetector(onTap: onTap, child: cell) : cell,
+      child: hasMemories
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                cell,
+                Positioned.fill(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: onTap,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : cell,
     );
   }
 }

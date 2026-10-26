@@ -285,7 +285,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('100% local'), findsOneWidget);
 
-      await tester.tap(find.text('Timeline'));
+      await tester.tap(find.text('Recuerdos'));
       await tester.pumpAndSettle();
       expect(find.text('Tus recuerdos'), findsOneWidget);
     });
